@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from datetime import datetime
 from io import StringIO
 from xmlrpc.client import DateTime
 from PIL import Image
@@ -16,7 +17,8 @@ import random
 import sys
 from threading import Thread
 
-
+imageRegistry = []
+taskRegistry = []
 condition = threading.Condition()
 
 def grayscale(image_array):
@@ -89,8 +91,8 @@ def load_JSON_file(json_path):
 
 '''
 @dataclass
-class RegisterImage:
-    def __init__(self,original :int,id:int,taskId:int, deleteFlag:int, processTime:DateTime, imageSizeBeforeProcessing:float, imageSizeAfterProcessing:float):
+class Image:
+    def __init__(self,original :bool,id:int,taskId:int, deleteFlag:bool, processTime:DateTime, imageSizeBeforeProcessing:float, imageSizeAfterProcessing:float):
         self.original = original
         self.id = id
         self.taskId = taskId
@@ -102,7 +104,7 @@ class RegisterImage:
         self.imageSizeAfterProcessing = imageSizeAfterProcessing
 
 @dataclass
-class RegisterTask:
+class Task:
     #   PROVERITI GDE TREBA DA STAVIMO CONDITION ACQUIRE/WAIT
     def __init__(self,  taskStatus: str ):
         self.imageIdList = []
@@ -113,31 +115,35 @@ class RegisterTask:
         condition.notify_all()
 
 #C:\Users\Marko\Desktop\proba.jpg
-
+cnt_imageID = 1
 def add_image():
+    global cnt_imageID
+    global imageRegistry
     image_path = input("Write your image path: ")
     image_array = load_image(image_path)
 
-    target_dir = r"D:\Marko workspace\Fakultet\Projekti\pp24-25-prvi-projekat-tim_markostojicic_vidanstojic_rn\prvi-projekat-tim_markostojicic_vidanstojic_rn\slike"
+    target_dir = "./slike"
     os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
 
     # Ime slike sa putanje
     image_name = os.path.basename(image_path)
     target_path = os.path.join(target_dir, image_name)
+    file_size = os.path.getsize(image_path) * 1.0
 
     # Premesti sliku na ciljnu putanju
-    shutil.move(image_path, target_path)
+    shutil.copy2(image_path, target_path)
     print(f"Image moved to {target_path}")
-
+    image = Image(True, cnt_imageID, None, False, datetime.now(), file_size, file_size)
+    imageRegistry.append(image)
+    cnt_imageID += 1
 
 def load_image(image_path):
     image = Image.open(image_path)
     return np.array(image)
 #image_array = load_image("example.png")
 
-imageRegistry = []
-taskRegistry = []
-
+def exit():
+    print("Exiting program")
 
 
 def process_command():
@@ -151,6 +157,7 @@ def process_command():
             addCommandThread = threading.Thread(target=add_image)
             addCommandThread.start()
             addCommandThread.join()
+
             print("Ovo je prva komanda.")
         elif command == "process":
             print("Ovo je druga komanda.")
@@ -162,7 +169,8 @@ def process_command():
         elif command == "describe":
             print("describe")
         elif command == "exit":
-            print("Exit")
+            
+            exit(0)
         else:
             print("Nepoznata komanda.")
 
