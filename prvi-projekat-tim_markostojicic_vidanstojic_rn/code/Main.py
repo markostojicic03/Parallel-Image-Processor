@@ -20,12 +20,9 @@ from PIL import Image as PILImage
 
 
 '''
-1. dodati promenjene slike u registar PROVERITI DA LI RADI
-2. napisati delate
-3. napisati list
+2. napisati delat
 4. napisati describe
 5. pogledati da li lepo menjamo sve parametre u klasi
-6. pogledati da li treba da iimamo vise json ili 1
 7. istestestirati program
 8. procitati za kraj specifikaciju
 
@@ -127,7 +124,7 @@ class MyImage:
 class Task:
     #   PROVERITI GDE TREBA DA STAVIMO CONDITION ACQUIRE/WAIT
     def __init__(self,  taskStatus: str ):
-        self.imageIdList = []
+        self.imageIdList
         self.taskStatus = taskStatus
 
 
@@ -139,7 +136,7 @@ def add_image():
     global imageRegistry
     image_path = input("Write your image path: ")
 
-    target_dir = "./slike"
+    target_dir = "../slike"
     os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
     try:
         image_name = os.path.basename(image_path)
@@ -188,7 +185,7 @@ def processTask():
                 if filter_type_value == "grayscale":
                     newImage_array = grayscale(load_image(image.imagePath))
                     newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "./slike"
+                    folderName = "../slike"
                     file_name = str(image.id)+"grayScale.jpg"  # Formira ime fajla sa ID-em slike.
                     save_path = os.path.join(folderName, file_name)
                     newImage_arrayPil.save(save_path)
@@ -197,7 +194,7 @@ def processTask():
                 elif filter_type_value == "gaussian_blur":
                     newImage_array = gaussian_blur(load_image(image.imagePath))
                     newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "./slike"
+                    folderName = "../slike"
                     file_name = str(image.id)+"gaussianBlur.jpg"  # Formira ime fajla sa ID-em slike.
                     save_path = os.path.join(folderName, file_name)
                     newImage_arrayPil.save(save_path)
@@ -206,7 +203,7 @@ def processTask():
                 elif filter_type_value == "adjust_brightness":
                     newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
                     newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "./slike"
+                    folderName = "../slike"
                     file_name = str(image.id)+"adjustBrightness.jpg"  # Formira ime fajla sa ID-em slike.
                     save_path = os.path.join(folderName, file_name)
                     newImage_arrayPil.save(save_path)
@@ -248,7 +245,7 @@ def delete():
                                print("wait")
                         else:
                             print("wait")
-                               #treba popricati da li ovde nastaje problem jer imamo dve liste koje moramo proveravati pojedinacno
+                    #treba popricati da li ovde nastaje problem jer imamo dve liste koje moramo proveravati pojedinacno
                     #prakticnije je da imamo jednu listu i samo nju da proveravamo
             imageRegistry.remove(image)
             file_path = image.imagePath
