@@ -1,4 +1,16 @@
 {
-    "id": 1,
-    "filterType": "adjust_brightness"
+    "MyImage": [
+        {
+            "id": 1,
+            "filterType": "grayscale"
+        },
+        {
+            "id": 2,
+            "filterType": "gaussian_blur"
+        },
+        {
+            "id": 3,
+            "filterType": "adjust_brightness"
+        }
+    ]
 }

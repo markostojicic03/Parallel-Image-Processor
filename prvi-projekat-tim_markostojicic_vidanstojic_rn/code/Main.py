@@ -20,7 +20,7 @@ from PIL import Image as PILImage
 
 
 '''
-1. dodati promenjene slike u registar
+1. dodati promenjene slike u registar PROVERITI DA LI RADI
 2. napisati delate
 3. napisati list
 4. napisati describe
@@ -94,11 +94,7 @@ def adjust_brightness(image_array, factor=1.0):
 def load_JSON_file(json_path):
     with open(json_path) as f:
         params = json.load(f)
-        print(params)
-        id_param = params.get('id')
-        print(f"First param: {id_param}")
-        filterType_param = params.get('filterType')
-        return id_param, filterType_param
+        return params.get('MyImage', [])
 
 
 #example.json
@@ -135,7 +131,7 @@ class Task:
         self.taskStatus = taskStatus
 
 
-#C:\Users\Marko\Desktop\slika2.jpg
+#C:\Users\Marko\Desktop\slika.jpg
 cnt_taskID = 1
 cnt_imageID = 1
 def add_image():
@@ -151,7 +147,7 @@ def add_image():
         file_size = os.path.getsize(image_path) * 1.0
         shutil.copy2(image_path, target_path)
         print(f"Image moved to {target_path}")
-        image = MyImage(True, cnt_imageID, None, False, datetime.now(), file_size, file_size, image_path)
+        image = MyImage(True, cnt_imageID, None, False, datetime.now(), file_size, file_size, target_path)
         imageRegistry.append(image)
         cnt_imageID += 1
         print(image.id)
@@ -174,46 +170,91 @@ def exit():
 #   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
 def processTask():
     global cnt_imageID
-    idImage_value, filter_type_value = load_JSON_file("../json/proba.json");
-    newTask = Task("In processing")
-    newTask.imageIdList.append(idImage_value)
-    taskRegistry.append(newTask)
+    global cnt_taskID
+    images_params = load_JSON_file("../json/proba.json")  # Učitava sve parametre slika iz JSON fajla.
+
+    for img_params in images_params:  # Iterira kroz svaku sliku iz liste.
+        idImage_value = img_params.get("id")
+        filter_type_value = img_params.get("filterType")
+
+        newTask = Task("In processing")
+        newTask.imageIdList.append(idImage_value)
+        taskRegistry.append(newTask)
+
+        for image in imageRegistry:
+            if image.id == idImage_value:
+                image.filterTypeList.append(filter_type_value)
+
+                if filter_type_value == "grayscale":
+                    newImage_array = grayscale(load_image(image.imagePath))
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "./slike"
+                    file_name = str(image.id)+"grayScale.jpg"  # Formira ime fajla sa ID-em slike.
+                    save_path = os.path.join(folderName, file_name)
+                    newImage_arrayPil.save(save_path)
+                    print("Odradjen grayscale")
+
+                elif filter_type_value == "gaussian_blur":
+                    newImage_array = gaussian_blur(load_image(image.imagePath))
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "./slike"
+                    file_name = str(image.id)+"gaussianBlur.jpg"  # Formira ime fajla sa ID-em slike.
+                    save_path = os.path.join(folderName, file_name)
+                    newImage_arrayPil.save(save_path)
+                    print("Odradjen gaussianBlur")
+
+                elif filter_type_value == "adjust_brightness":
+                    newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "./slike"
+                    file_name = str(image.id)+"adjustBrightness.jpg"  # Formira ime fajla sa ID-em slike.
+                    save_path = os.path.join(folderName, file_name)
+                    newImage_arrayPil.save(save_path)
+                    print("Odradjen adjustBrightness")
+
+                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                imageRegistry.append(newImage)
+                cnt_taskID += 1
+                cnt_imageID += 1
+                break
+                #fali provera ukolika slika ne postoji u registru
+
+def list_command():
     for image in imageRegistry:
-        if image.id == idImage_value:
-            image.filterTypeList.append(filter_type_value)
-            if filter_type_value == "grayscale":
-                newImage_array = grayscale(load_image(image.imagePath))
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "../slike"
-                file_name = str(image.id)+"grayScale.jpg"
-                save_path = os.path.join(folderName, file_name)
-                # Sačuvaj sliku u tom folderu
-                newImage_arrayPil.save(save_path)
-                print("Odradjen grayscale")
-            elif filter_type_value == "gaussian_blur":
-                newImage_array = gaussian_blur(load_image(image.imagePath))
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "./slike"
-                file_name = str(image.id)+"gaussianBlur.jpg"
-                save_path = os.path.join(folderName, file_name)
-                newImage_arrayPil.save(save_path)
-                print("Odradjen gaussianBlur")
-            elif filter_type_value == "adjust_brightness":
-                newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "./slike"
-                file_name = str(image.id)+"adjustBrightness.jpg"
-                save_path = os.path.join(folderName, file_name)
-                newImage_arrayPil.save(save_path)
+        print("Image id " + str(image.id))
+        print("Original " + str(image.original))
+        print("Image task " + str(image.taskId))
+        print("Image path " + image.imagePath)
+    print("kraj ispisa")
 
-               # image = MyImage(False, cnt_imageID, None, False, datetime.now(), file_size, file_size, image_path)
-                #imageRegistry.append(image)
-               # cnt_imageID += 1
-
-                print("Odradjen adjustBrightness")
-            break
-    #fali provera ukolika slika ne postoji u registru
-
+def describe():
+    for image in imageRegistry:
+        print("Image id " + str(image.id))
+def delete():
+    id_image = input("Write your image id for delete: ")
+    for image in imageRegistry:
+    #    print("uneti id " + id_image)
+    #    print("Image id " + str(image.id))
+        if image.id == int(id_image):
+           # print("usao")
+            image.deleteFlag = True
+            for task in taskRegistry:
+                for id in task.imageIdList:
+                    if id == int(id_image):
+                        if task.taskStatus == "processing":
+                            print("processing")
+                           elif task.taskStatus == "finished":
+                               print("wait")
+                        else:
+                            print("wait")
+                               #treba popricati da li ovde nastaje problem jer imamo dve liste koje moramo proveravati pojedinacno
+                    #prakticnije je da imamo jednu listu i samo nju da proveravamo
+            imageRegistry.remove(image)
+            file_path = image.imagePath
+            if os.path.exists(file_path):
+                print(image.imagePath)
+                os.remove(file_path)
 
 def process_command():
 
@@ -229,9 +270,10 @@ def process_command():
             processTask()
             print("Process komanda.")
         elif command == "delete":
+            delete()
             print("Delete komanda")
         elif command == "list":
-            print("list")
+            list_command()
         elif command == "describe":
             print("describe")
         elif command == "exit":
@@ -242,7 +284,7 @@ def process_command():
 
 if __name__ == "__main__":
     process_command()
-#C:\Users\vidan_gofx79m\Desktop\slika2.jpg
+#C:\Users\vidan_gofx79m\Desktop\slika.jpg
 
 
 #"id": 1,
