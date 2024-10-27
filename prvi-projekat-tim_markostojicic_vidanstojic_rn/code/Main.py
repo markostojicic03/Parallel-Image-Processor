@@ -17,9 +17,25 @@ import random
 import sys
 from threading import Thread
 
+
+'''
+1. Obrisati niti i napisati ceo program bez paralelizma.
+2. Procitati i poslusati jos jednom sve sto nam je asistent rekao.
+   
+
+
+
+'''
+
+
+
+
+
+
 imageRegistry = []
 taskRegistry = []
 condition = threading.Condition()
+threadList = []
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -84,12 +100,15 @@ def load_JSON_file(json_path):
 #example.json
 '''
 {
-    "first": "Ovo je prvi parametar",
-    "second": "Ovo je drugi parametar",
+    "id": "Ovo je prvi parametar",
+    "path": /putanja
+    "": "Ovo je drugi parametar",
     "third": 123
 }
 
 '''
+
+
 @dataclass
 class Image:
     def __init__(self,original :bool,id:int,taskId:int, deleteFlag:bool, processTime:DateTime, imageSizeBeforeProcessing:float, imageSizeAfterProcessing:float):
@@ -120,17 +139,18 @@ def add_image():
     global cnt_imageID
     global imageRegistry
     image_path = input("Write your image path: ")
-    image_array = load_image(image_path)
 
     target_dir = "./slike"
     os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
+    try:
+        image_name = os.path.basename(image_path)
+        target_path = os.path.join(target_dir, image_name)
+        file_size = os.path.getsize(image_path) * 1.0
+    except FileNotFoundError:
+        print("Wrong image path.")
+        return
 
-    # Ime slike sa putanje
-    image_name = os.path.basename(image_path)
-    target_path = os.path.join(target_dir, image_name)
-    file_size = os.path.getsize(image_path) * 1.0
 
-    # Premesti sliku na ciljnu putanju
     shutil.copy2(image_path, target_path)
     print(f"Image moved to {target_path}")
     image = Image(True, cnt_imageID, None, False, datetime.now(), file_size, file_size)
@@ -143,6 +163,8 @@ def load_image(image_path):
 #image_array = load_image("example.png")
 
 def exit():
+    for thread in threadList:
+        thread.join()#proveriti jos jednom da li na ovaj nacin treba da radimo
     print("Exiting program")
 
 
@@ -154,30 +176,24 @@ def process_command():
         command = input("Write the command you want to do: ")
 
         if command == "add":
-            addCommandThread = threading.Thread(target=add_image)
-            addCommandThread.start()
-            addCommandThread.join()
-
-            print("Ovo je prva komanda.")
+            add_image()
+            print("Izvrsena add komanda.")
         elif command == "process":
-            print("Ovo je druga komanda.")
+            print("Process komanda.")
         elif command == "delete":
-            print("Izlazim iz programa.")
-            exit(0)
+            print("Delete komanda")
         elif command == "list":
             print("list")
         elif command == "describe":
             print("describe")
         elif command == "exit":
-            
-            exit(0)
+            print("Izlazak iz programa - exit")
+            sys.exit()
         else:
             print("Nepoznata komanda.")
 
 if __name__ == "__main__":
-    mainThread = threading.Thread(target=process_command)
-    mainThread.start()
-    mainThread.join()
+    process_command()
 
 
 
