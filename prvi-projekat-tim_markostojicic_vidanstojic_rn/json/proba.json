@@ -1,4 +1,4 @@
 {
     "id": 1,
-    "filterType": "grayscale"
+    "filterType": "adjust_brightness"
 }

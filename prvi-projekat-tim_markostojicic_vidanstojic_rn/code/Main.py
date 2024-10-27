@@ -20,17 +20,18 @@ from PIL import Image as PILImage
 
 
 '''
-1. Obrisati niti i napisati ceo program bez paralelizma.
-2. Procitati i poslusati jos jednom sve sto nam je asistent rekao.
+1. dodati promenjene slike u registar
+2. napisati delate
+3. napisati list
+4. napisati describe
+5. pogledati da li lepo menjamo sve parametre u klasi
+6. pogledati da li treba da iimamo vise json ili 1
+7. istestestirati program
+8. procitati za kraj specifikaciju
+
    
 
-
-
 '''
-
-
-
-
 
 
 imageRegistry = []
@@ -110,32 +111,6 @@ def load_JSON_file(json_path):
 }
 
 '''
-# Ispod je apsolutna putanja do json fajla, zameniti za relativnu
-#   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
-def processTask():
-    idImage_value, filter_type_value = load_JSON_file("../json/proba.json");
-    newTask = Task("In processing")
-    newTask.imageIdList.append(idImage_value)
-    taskRegistry.append(newTask)
-    for image in imageRegistry:
-        if image.id == idImage_value:
-            image.filterTypeList.append(filter_type_value)
-            if filter_type_value == "grayscale":
-                newImage_array = grayscale(load_image(image.imagePath))
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "../slike"
-                file_name = str(image.id)+"grayScale.jpg"
-                save_path = os.path.join(folderName, file_name)
-                # Sačuvaj sliku u tom folderu
-                newImage_arrayPil.save(save_path)
-                print("Odradjen grayscale")
-            break
-    #fali provera ukolika slika ne postoji u registru
-
-
-
-
-
 
 @dataclass
 class MyImage:
@@ -160,14 +135,15 @@ class Task:
         self.taskStatus = taskStatus
 
 
-#C:\Users\Marko\Desktop\slika.jpg
+#C:\Users\Marko\Desktop\slika2.jpg
+cnt_taskID = 1
 cnt_imageID = 1
 def add_image():
     global cnt_imageID
     global imageRegistry
     image_path = input("Write your image path: ")
 
-    target_dir = "../slike"
+    target_dir = "./slike"
     os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
     try:
         image_name = os.path.basename(image_path)
@@ -192,6 +168,51 @@ def exit():
     for thread in threadList:
         thread.join()#proveriti jos jednom da li na ovaj nacin treba da radimo
     print("Exiting program")
+
+
+# Ispod je apsolutna putanja do json fajla, zameniti za relativnu
+#   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
+def processTask():
+    global cnt_imageID
+    idImage_value, filter_type_value = load_JSON_file("../json/proba.json");
+    newTask = Task("In processing")
+    newTask.imageIdList.append(idImage_value)
+    taskRegistry.append(newTask)
+    for image in imageRegistry:
+        if image.id == idImage_value:
+            image.filterTypeList.append(filter_type_value)
+            if filter_type_value == "grayscale":
+                newImage_array = grayscale(load_image(image.imagePath))
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "../slike"
+                file_name = str(image.id)+"grayScale.jpg"
+                save_path = os.path.join(folderName, file_name)
+                # Sačuvaj sliku u tom folderu
+                newImage_arrayPil.save(save_path)
+                print("Odradjen grayscale")
+            elif filter_type_value == "gaussian_blur":
+                newImage_array = gaussian_blur(load_image(image.imagePath))
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "./slike"
+                file_name = str(image.id)+"gaussianBlur.jpg"
+                save_path = os.path.join(folderName, file_name)
+                newImage_arrayPil.save(save_path)
+                print("Odradjen gaussianBlur")
+            elif filter_type_value == "adjust_brightness":
+                newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "./slike"
+                file_name = str(image.id)+"adjustBrightness.jpg"
+                save_path = os.path.join(folderName, file_name)
+                newImage_arrayPil.save(save_path)
+
+               # image = MyImage(False, cnt_imageID, None, False, datetime.now(), file_size, file_size, image_path)
+                #imageRegistry.append(image)
+               # cnt_imageID += 1
+
+                print("Odradjen adjustBrightness")
+            break
+    #fali provera ukolika slika ne postoji u registru
 
 
 def process_command():
@@ -221,7 +242,10 @@ def process_command():
 
 if __name__ == "__main__":
     process_command()
+#C:\Users\vidan_gofx79m\Desktop\slika2.jpg
 
 
-
-
+#"id": 1,
+ #   "filterType": "grayscale",
+  #  "id": 2,
+   # "filterType": "gaussian_blur",
