@@ -16,6 +16,7 @@ import time
 import random
 import sys
 from threading import Thread
+from PIL import Image as PILImage
 
 
 '''
@@ -93,8 +94,10 @@ def load_JSON_file(json_path):
     with open(json_path) as f:
         params = json.load(f)
         print(params)
-        first_param = params.get('first')
-        print(f"First param: {first_param}")
+        id_param = params.get('id')
+        print(f"First param: {id_param}")
+        filterType_param = params.get('filterType')
+        return id_param, filterType_param
 
 
 #example.json
@@ -107,11 +110,36 @@ def load_JSON_file(json_path):
 }
 
 '''
+# Ispod je apsolutna putanja do json fajla, zameniti za relativnu
+#   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
+def processTask():
+    idImage_value, filter_type_value = load_JSON_file("../json/proba.json");
+    newTask = Task("In processing")
+    newTask.imageIdList.append(idImage_value)
+    taskRegistry.append(newTask)
+    for image in imageRegistry:
+        if image.id == idImage_value:
+            image.filterTypeList.append(filter_type_value)
+            if filter_type_value == "grayscale":
+                newImage_array = grayscale(load_image(image.imagePath))
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "../slike"
+                file_name = str(image.id)+"grayScale.jpg"
+                save_path = os.path.join(folderName, file_name)
+                # Sačuvaj sliku u tom folderu
+                newImage_arrayPil.save(save_path)
+                print("Odradjen grayscale")
+            break
+    #fali provera ukolika slika ne postoji u registru
+
+
+
+
 
 
 @dataclass
-class Image:
-    def __init__(self,original :bool,id:int,taskId:int, deleteFlag:bool, processTime:DateTime, imageSizeBeforeProcessing:float, imageSizeAfterProcessing:float):
+class MyImage:
+    def __init__(self,original :bool,id:int,taskId:int, deleteFlag:bool, processTime:DateTime, imageSizeBeforeProcessing:float, imageSizeAfterProcessing:float, imagePath:str):
         self.original = original
         self.id = id
         self.taskId = taskId
@@ -121,44 +149,42 @@ class Image:
         self.processTime = processTime
         self.imageSizeBeforeProcessing = imageSizeBeforeProcessing
         self.imageSizeAfterProcessing = imageSizeAfterProcessing
+        self.imagePath = imagePath
+
 
 @dataclass
 class Task:
     #   PROVERITI GDE TREBA DA STAVIMO CONDITION ACQUIRE/WAIT
     def __init__(self,  taskStatus: str ):
         self.imageIdList = []
-        self.filterTypeList = []
         self.taskStatus = taskStatus
-    def taskFinished(self):
-        self.taskStatus = "Finished"
-        condition.notify_all()
 
-#C:\Users\Marko\Desktop\proba.jpg
+
+#C:\Users\Marko\Desktop\slika.jpg
 cnt_imageID = 1
 def add_image():
     global cnt_imageID
     global imageRegistry
     image_path = input("Write your image path: ")
 
-    target_dir = "./slike"
+    target_dir = "../slike"
     os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
     try:
         image_name = os.path.basename(image_path)
         target_path = os.path.join(target_dir, image_name)
         file_size = os.path.getsize(image_path) * 1.0
+        shutil.copy2(image_path, target_path)
+        print(f"Image moved to {target_path}")
+        image = MyImage(True, cnt_imageID, None, False, datetime.now(), file_size, file_size, image_path)
+        imageRegistry.append(image)
+        cnt_imageID += 1
+        print(image.id)
     except FileNotFoundError:
         print("Wrong image path.")
         return
 
-
-    shutil.copy2(image_path, target_path)
-    print(f"Image moved to {target_path}")
-    image = Image(True, cnt_imageID, None, False, datetime.now(), file_size, file_size)
-    imageRegistry.append(image)
-    cnt_imageID += 1
-
 def load_image(image_path):
-    image = Image.open(image_path)
+    image = PILImage.open(image_path)
     return np.array(image)
 #image_array = load_image("example.png")
 
@@ -179,6 +205,7 @@ def process_command():
             add_image()
             print("Izvrsena add komanda.")
         elif command == "process":
+            processTask()
             print("Process komanda.")
         elif command == "delete":
             print("Delete komanda")
