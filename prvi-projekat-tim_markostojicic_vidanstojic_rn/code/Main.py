@@ -124,7 +124,7 @@ class MyImage:
 class Task:
     #   PROVERITI GDE TREBA DA STAVIMO CONDITION ACQUIRE/WAIT
     def __init__(self,  taskStatus: str ):
-        self.imageIdList
+        self.imageId = None
         self.taskStatus = taskStatus
 
 
@@ -175,10 +175,12 @@ def processTask():
         filter_type_value = img_params.get("filterType")
 
         newTask = Task("In processing")
-        newTask.imageIdList.append(idImage_value)
+        newTask.imageId = idImage_value
         taskRegistry.append(newTask)
 
         for image in imageRegistry:
+            if image.original == False:
+                break
             if image.id == idImage_value:
                 image.filterTypeList.append(filter_type_value)
 
@@ -214,6 +216,7 @@ def processTask():
                 imageRegistry.append(newImage)
                 cnt_taskID += 1
                 cnt_imageID += 1
+                newTask.taskStatus = "Finished"
                 break
                 #fali provera ukolika slika ne postoji u registru
 
@@ -231,27 +234,26 @@ def describe():
 def delete():
     id_image = input("Write your image id for delete: ")
     for image in imageRegistry:
-    #    print("uneti id " + id_image)
-    #    print("Image id " + str(image.id))
+        print("Image " + str(id_image))
         if image.id == int(id_image):
-           # print("usao")
+            print("Image id " + str(image.id))
             image.deleteFlag = True
+           # if image.original == True:
+
             for task in taskRegistry:
-                for id in task.imageIdList:
-                    if id == int(id_image):
-                        if task.taskStatus == "processing":
-                            print("processing")
-                           elif task.taskStatus == "finished":
-                               print("wait")
-                        else:
-                            print("wait")
-                    #treba popricati da li ovde nastaje problem jer imamo dve liste koje moramo proveravati pojedinacno
-                    #prakticnije je da imamo jednu listu i samo nju da proveravamo
-            imageRegistry.remove(image)
-            file_path = image.imagePath
-            if os.path.exists(file_path):
-                print(image.imagePath)
-                os.remove(file_path)
+                if task.imageId == int(id_image):
+                    if task.taskStatus == "In processing":
+                        print("processing")
+                    elif task.taskStatus == "Finished":
+                        imageRegistry.remove(image)
+                        file_path = image.imagePath
+                        print("finished")
+                        if os.path.exists(file_path):
+                            print(image.imagePath)
+                            os.remove(file_path)
+                    else:
+                        print("wait")
+
 
 def process_command():
 
@@ -283,8 +285,3 @@ if __name__ == "__main__":
     process_command()
 #C:\Users\vidan_gofx79m\Desktop\slika.jpg
 
-
-#"id": 1,
- #   "filterType": "grayscale",
-  #  "id": 2,
-   # "filterType": "gaussian_blur",
