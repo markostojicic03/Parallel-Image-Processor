@@ -162,9 +162,10 @@ def load_image(image_path):
     return np.array(image)
 #image_array = load_image("example.png")
 
-def exit():
-    for thread in threadList:
-        thread.join()#proveriti jos jednom da li na ovaj nacin treba da radimo
+def exit():#dodati brisanje svih slika iz liste i fajla
+   # for thread in threadList:
+    #    thread.join()#proveriti jos jednom da li na ovaj nacin treba da radimo
+    exit_delete()
     print("Exiting program")
 
 
@@ -192,6 +193,7 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
                 cnt_json += 1
@@ -207,6 +209,7 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
                 cnt_json += 1
@@ -222,6 +225,7 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
                 cnt_json += 1
@@ -243,8 +247,8 @@ def list_command():
 def describe():
     for image in imageRegistry:
         print("Image id " + str(image.id))
-def delete():
-    id_image = input("Write your image id for delete: ")
+def delete():#popraviti delete
+    id_image = input("Write your image id for delete: ")#pitati da li moze ovako
     for image in imageRegistry:
         print("Image " + str(id_image))
         if image.id == int(id_image):
@@ -266,6 +270,11 @@ def delete():
                     else:
                         print("wait")
 
+def exit_delete():
+    for image in imageRegistry:
+        file_path = image.imagePath
+        print(file_path)
+        os.remove(file_path)
 
 def process_command():
 
@@ -288,6 +297,7 @@ def process_command():
         elif command == "describe":
             print("describe")
         elif command == "exit":
+            exit()
             print("Izlazak iz programa - exit")
             sys.exit()
         else:
@@ -296,4 +306,4 @@ def process_command():
 if __name__ == "__main__":
     process_command()
 #C:\Users\vidan_gofx79m\Desktop\slika.jpg
-
+#zapisati na notion sta je ostalo kad doradim kod
