@@ -91,7 +91,11 @@ def adjust_brightness(image_array, factor=1.0):
 def load_JSON_file(json_path):
     with open(json_path) as f:
         params = json.load(f)
-        return params.get('MyImage', [])
+        print(params)
+        id_param = params.get('id')
+        print(f"First param: {id_param}")
+        filterType_param = params.get('filterType')
+        return id_param, filterType_param
 
 
 #example.json
@@ -131,6 +135,7 @@ class Task:
 #C:\Users\Marko\Desktop\slika.jpg
 cnt_taskID = 1
 cnt_imageID = 1
+cnt_json = 1
 def add_image():
     global cnt_imageID
     global imageRegistry
@@ -166,58 +171,65 @@ def exit():
 # Ispod je apsolutna putanja do json fajla, zameniti za relativnu
 #   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
 def processTask():
-    global cnt_imageID
     global cnt_taskID
-    images_params = load_JSON_file("../json/proba.json")  # Učitava sve parametre slika iz JSON fajla.
-
-    for img_params in images_params:  # Iterira kroz svaku sliku iz liste.
-        idImage_value = img_params.get("id")
-        filter_type_value = img_params.get("filterType")
-
-        newTask = Task("In processing")
-        newTask.imageId = idImage_value
-        taskRegistry.append(newTask)
-
-        for image in imageRegistry:
-            if image.original == False:
-                break
-            if image.id == idImage_value:
-                image.filterTypeList.append(filter_type_value)
-
-                if filter_type_value == "grayscale":
-                    newImage_array = grayscale(load_image(image.imagePath))
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id)+"grayScale.jpg"  # Formira ime fajla sa ID-em slike.
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    print("Odradjen grayscale")
-
-                elif filter_type_value == "gaussian_blur":
-                    newImage_array = gaussian_blur(load_image(image.imagePath))
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id)+"gaussianBlur.jpg"  # Formira ime fajla sa ID-em slike.
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    print("Odradjen gaussianBlur")
-
-                elif filter_type_value == "adjust_brightness":
-                    newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id)+"adjustBrightness.jpg"  # Formira ime fajla sa ID-em slike.
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    print("Odradjen adjustBrightness")
-
+    global cnt_imageID
+    global cnt_json
+    idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
+    newTask = Task("In processing")
+    newTask.imageId = idImage_value
+    taskRegistry.append(newTask)
+    for image in imageRegistry:
+        if image.id == idImage_value:
+            image.filterTypeList.append(filter_type_value)
+            if filter_type_value == "grayscale":
+                newImage_array = grayscale(load_image(image.imagePath))
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "../slike"
+                file_name = str(image.id) + "grayScale.jpg"
+                save_path = os.path.join(folderName, file_name)
+                # Sačuvaj sliku u tom folderu
+                newImage_arrayPil.save(save_path)
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
                 cnt_taskID += 1
                 cnt_imageID += 1
-                newTask.taskStatus = "Finished"
+                cnt_json += 1
+                print("Odradjen grayscale")
                 break
+            elif filter_type_value == "gaussian_blur":
+                newImage_array = gaussian_blur(load_image(image.imagePath))
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "../slike"
+                file_name = str(image.id) + "gaussianBlur.jpg"
+                save_path = os.path.join(folderName, file_name)
+                newImage_arrayPil.save(save_path)
+                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                imageRegistry.append(newImage)
+                cnt_taskID += 1
+                cnt_imageID += 1
+                cnt_json += 1
+                print("Odradjen gaussianBlur")
+                break
+            elif filter_type_value == "adjust_brightness":
+                newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+                newImage_arrayPil = Image.fromarray(newImage_array)
+                folderName = "../slike"
+                file_name = str(image.id) + "adjustBrightness.jpg"
+                save_path = os.path.join(folderName, file_name)
+                newImage_arrayPil.save(save_path)
+                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                imageRegistry.append(newImage)
+                cnt_taskID += 1
+                cnt_imageID += 1
+                cnt_json += 1
+                print("Odradjen adjustBrightness")
+                break
+            else:
+                continue
+            break#mozda nepotrebno
                 #fali provera ukolika slika ne postoji u registru
 
 def list_command():
