@@ -19,17 +19,6 @@ from threading import Thread
 from PIL import Image as PILImage
 
 
-'''
-2. napisati delat
-4. napisati describe
-5. pogledati da li lepo menjamo sve parametre u klasi
-7. istestestirati program
-8. procitati za kraj specifikaciju
-
-   
-
-'''
-
 
 imageRegistry = []
 taskRegistry = []
@@ -175,6 +164,8 @@ def processTask():
     global cnt_taskID
     global cnt_imageID
     global cnt_json
+
+
     idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
     newTask = Task("In processing")
     newTask.imageId = idImage_value
@@ -233,7 +224,7 @@ def processTask():
                 break
             else:
                 continue
-            break#mozda nepotrebno
+            break    #mozda nepotrebno
                 #fali provera ukolika slika ne postoji u registru
 
 def list_command():
@@ -275,35 +266,57 @@ def exit_delete():
         file_path = image.imagePath
         print(file_path)
         os.remove(file_path)
+    for threadElement in threadList:
+        if threadElement != threading.current_thread(): #proveriti da li je potrebno da se stavi i exit nit u listu niti
+            threadElement.join()
+        else:
+            print(threadElement.name)
+#C:\Users\Marko\Desktop\slika.jpg
+def command_input():
 
-def process_command():
-
-    global imageRegistry, taskRegistry
+    global imageRegistry, taskRegistry, threadList
     # dodati periodicno proveravanje
     while True:
         command = input("Write the command you want to do: ")
 
         if command == "add":
-            add_image()
+            threadForAddImageC = threading.Thread(target=add_image())
+            threadForAddImageC.start()
+            threadList.append(threadForAddImageC)
             print("Izvrsena add komanda.")
         elif command == "process":
-            processTask()
+            threadForProcessC = threading.Thread(target=processTask())
+            threadForProcessC.start()
+            threadList.append(threadForProcessC)
             print("Process komanda.")
         elif command == "delete":
-            delete()
+            threadForDeleteC = threading.Thread(target=delete())
+            threadForDeleteC.start()
+            threadList.append(threadForDeleteC)
             print("Delete komanda")
         elif command == "list":
-            list_command()
+            threadForListC = threading.Thread(target=list_command())
+            threadForListC.start()
+            threadList.append(threadForListC)
         elif command == "describe":
+            threadForDescribeC = threading.Thread(target=describe())
+            threadForDescribeC.start()
+            threadList.append(threadForDescribeC)
             print("describe")
         elif command == "exit":
-            exit()
+            threadForExitC = threading.Thread(target=exit_delete())
+            threadForExitC.start()
+            threadList.append(threadForExitC)
+            threadForExitC.join()
             print("Izlazak iz programa - exit")
             sys.exit()
         else:
             print("Nepoznata komanda.")
 
 if __name__ == "__main__":
-    process_command()
+    threadMain = threading.Thread(target=command_input)
+    threadMain.start()
+    threadList.append(threadMain)
+    threadMain.join()
 #C:\Users\vidan_gofx79m\Desktop\slika.jpg
 #zapisati na notion sta je ostalo kad doradim kod
