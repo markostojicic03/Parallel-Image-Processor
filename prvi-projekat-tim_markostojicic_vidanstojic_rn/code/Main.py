@@ -1,8 +1,11 @@
 import json
 import os
+import queue
 import shutil
 from datetime import datetime
 from io import StringIO
+from queue import Queue, Empty
+from time import sleep
 from xmlrpc.client import DateTime
 from PIL import Image
 import numpy as np
@@ -15,7 +18,7 @@ import threading
 import time
 import random
 import sys
-from threading import Thread
+from threading import Thread, Event
 from PIL import Image as PILImage
 
 
@@ -24,6 +27,7 @@ imageRegistry = []
 taskRegistry = []
 condition = threading.Condition()
 threadList = []
+eventQueue = Queue(0)
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -106,7 +110,7 @@ class MyImage:
         self.taskId = taskId
         self.usedTasklist = []
         self.deleteFlag = deleteFlag
-        self.filterTypeList = []
+        self.filterImageList = []
         self.processTime = processTime
         self.imageSizeBeforeProcessing = imageSizeBeforeProcessing
         self.imageSizeAfterProcessing = imageSizeAfterProcessing
@@ -172,7 +176,6 @@ def processTask():
     taskRegistry.append(newTask)
     for image in imageRegistry:
         if image.id == idImage_value:
-            image.filterTypeList.append(filter_type_value)
             if filter_type_value == "grayscale":
                 newImage_array = grayscale(load_image(image.imagePath))
                 newImage_arrayPil = Image.fromarray(newImage_array)
@@ -184,6 +187,12 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                if(image.taskId != None):# filterImage = 1     taskList = 1 1
+                    newImage.usedTasklist = image.usedTasklist.copy()
+                    newImage.filterImageList = image.filterImageList.copy()
+                    #newImage.usedTasklist.append(str(image.taskId))
+                newImage.filterImageList.append(str(image.id))
+                newImage.usedTasklist.append(str(cnt_taskID))
                 newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
@@ -200,6 +209,12 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                if (image.taskId != None):
+                    newImage.usedTasklist = image.usedTasklist.copy()
+                    newImage.filterImageList = image.filterImageList.copy()
+                    #newImage.usedTasklist.append(str(image.taskId))
+                newImage.filterImageList.append(str(image.id))
+                newImage.usedTasklist.append(str(cnt_taskID))
                 newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
@@ -216,6 +231,12 @@ def processTask():
                 newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                 imageRegistry.append(newImage)
+                if (image.taskId != None):
+                    newImage.usedTasklist = image.usedTasklist.copy()
+                    newImage.filterImageList = image.filterImageList.copy()
+                    #newImage.usedTasklist.append(str(image.taskId))
+                newImage.filterImageList.append(str(image.id))
+                newImage.usedTasklist.append(str(cnt_taskID))
                 newTask.taskStatus = "Finished"
                 cnt_taskID += 1
                 cnt_imageID += 1
@@ -228,16 +249,24 @@ def processTask():
                 #fali provera ukolika slika ne postoji u registru
 
 def list_command():
+    global eventQueue, eventFlag
     for image in imageRegistry:
-        print("Image id " + str(image.id))
-        print("Original " + str(image.original))
-        print("Image task " + str(image.taskId))
-        print("Image path " + image.imagePath)
-    print("kraj ispisa")
+        imageValue = "Image ID " + str(image.id) + ", image path " + str(image.imagePath)
+        eventQueue.put(imageValue)
 
 def describe():
+    global eventQueue
     for image in imageRegistry:
-        print("Image id " + str(image.id))
+        imageValue = "Image ID "
+        if image.original == True:
+            continue
+        for str in image.filterImageList:
+            imageValue += str + " "
+        imageValue += ", used task "
+        for str in image.usedTasklist:
+            imageValue += str + " "
+        eventQueue.put(imageValue)
+
 def delete():#popraviti delete
     id_image = input("Write your image id for delete: ")#pitati da li moze ovako
     for image in imageRegistry:
@@ -245,8 +274,6 @@ def delete():#popraviti delete
         if image.id == int(id_image):
             print("Image id " + str(image.id))
             image.deleteFlag = True
-           # if image.original == True:
-
             for task in taskRegistry:
                 if task.imageId == int(id_image):
                     if task.taskStatus == "In processing":
@@ -274,7 +301,7 @@ def exit_delete():
 #C:\Users\Marko\Desktop\slika.jpg
 def command_input():
 
-    global imageRegistry, taskRegistry, threadList
+    global imageRegistry, taskRegistry, threadList,eventQueue
     # dodati periodicno proveravanje
     while True:
         command = input("Write the command you want to do: ")
@@ -312,6 +339,14 @@ def command_input():
             sys.exit()
         else:
             print("Nepoznata komanda.")
+        sleep(3)
+        while not eventQueue.empty():
+            print("usao")
+            try:
+                value = eventQueue.get(timeout=5)
+                print(value)
+            except Empty:
+                pass
 
 if __name__ == "__main__":
     threadMain = threading.Thread(target=command_input)
@@ -319,4 +354,3 @@ if __name__ == "__main__":
     threadList.append(threadMain)
     threadMain.join()
 #C:\Users\vidan_gofx79m\Desktop\slika.jpg
-#zapisati na notion sta je ostalo kad doradim kod
