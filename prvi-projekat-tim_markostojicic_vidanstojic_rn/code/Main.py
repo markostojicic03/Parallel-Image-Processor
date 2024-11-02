@@ -24,6 +24,9 @@ imageRegistry = []
 taskRegistry = []
 condition = threading.Condition()
 threadList = []
+filterProcessing = False
+deleteProcessing = False
+describeProcessing = False
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -86,17 +89,6 @@ def load_JSON_file(json_path):
         filterType_param = params.get('filterType')
         return id_param, filterType_param
 
-
-#example.json
-'''
-{
-    "id": "Ovo je prvi parametar",
-    "path": /putanja
-    "": "Ovo je drugi parametar",
-    "third": 123
-}
-
-'''
 
 @dataclass
 class MyImage:
@@ -161,105 +153,124 @@ def exit():#dodati brisanje svih slika iz liste i fajla
 # Ispod je apsolutna putanja do json fajla, zameniti za relativnu
 #   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
 def processTask():
-    global cnt_taskID
-    global cnt_imageID
-    global cnt_json
+    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition
 
-
-    idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
-    newTask = Task("In processing")
-    newTask.imageId = idImage_value
-    taskRegistry.append(newTask)
-    for image in imageRegistry:
-        if image.id == idImage_value:
-            image.filterTypeList.append(filter_type_value)
-            if filter_type_value == "grayscale":
-                newImage_array = grayscale(load_image(image.imagePath))
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "../slike"
-                file_name = str(image.id) + "grayScale.jpg"
-                save_path = os.path.join(folderName, file_name)
-                # Sačuvaj sliku u tom folderu
-                newImage_arrayPil.save(save_path)
-                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                imageRegistry.append(newImage)
-                newTask.taskStatus = "Finished"
-                cnt_taskID += 1
-                cnt_imageID += 1
-                cnt_json += 1
-                print("Odradjen grayscale")
-                break
-            elif filter_type_value == "gaussian_blur":
-                newImage_array = gaussian_blur(load_image(image.imagePath))
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "../slike"
-                file_name = str(image.id) + "gaussianBlur.jpg"
-                save_path = os.path.join(folderName, file_name)
-                newImage_arrayPil.save(save_path)
-                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                imageRegistry.append(newImage)
-                newTask.taskStatus = "Finished"
-                cnt_taskID += 1
-                cnt_imageID += 1
-                cnt_json += 1
-                print("Odradjen gaussianBlur")
-                break
-            elif filter_type_value == "adjust_brightness":
-                newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
-                newImage_arrayPil = Image.fromarray(newImage_array)
-                folderName = "../slike"
-                file_name = str(image.id) + "adjustBrightness.jpg"
-                save_path = os.path.join(folderName, file_name)
-                newImage_arrayPil.save(save_path)
-                newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                   image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                imageRegistry.append(newImage)
-                newTask.taskStatus = "Finished"
-                cnt_taskID += 1
-                cnt_imageID += 1
-                cnt_json += 1
-                print("Odradjen adjustBrightness")
-                break
-            else:
-                continue
-            break    #mozda nepotrebno
+    with condition:
+        idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
+        newTask = Task("In processing")
+        filterProcessing = True
+        newTask.imageId = idImage_value
+        taskRegistry.append(newTask)
+        for image in imageRegistry:
+            if image.id == idImage_value:
+                image.filterTypeList.append(filter_type_value)
+                if filter_type_value == "grayscale":
+                    newImage_array = grayscale(load_image(image.imagePath))
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "../slike"
+                    file_name = str(image.id) + "grayScale.jpg"
+                    save_path = os.path.join(folderName, file_name)
+                    # Sačuvaj sliku u tom folderu
+                    newImage_arrayPil.save(save_path)
+                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                       image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                    imageRegistry.append(newImage)
+                    newTask.taskStatus = "Finished"
+                    filterProcessing = False
+                    condition.notify_all()
+                    cnt_taskID += 1
+                    cnt_imageID += 1
+                    cnt_json += 1
+                    print("Odradjen grayscale")
+                    break
+                elif filter_type_value == "gaussian_blur":
+                    newImage_array = gaussian_blur(load_image(image.imagePath))
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "../slike"
+                    file_name = str(image.id) + "gaussianBlur.jpg"
+                    save_path = os.path.join(folderName, file_name)
+                    newImage_arrayPil.save(save_path)
+                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                       image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                    imageRegistry.append(newImage)
+                    newTask.taskStatus = "Finished"
+                    filterProcessing = False
+                    condition.notify_all()
+                    cnt_taskID += 1
+                    cnt_imageID += 1
+                    cnt_json += 1
+                    print("Odradjen gaussianBlur")
+                    break
+                elif filter_type_value == "adjust_brightness":
+                    newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+                    newImage_arrayPil = Image.fromarray(newImage_array)
+                    folderName = "../slike"
+                    file_name = str(image.id) + "adjustBrightness.jpg"
+                    save_path = os.path.join(folderName, file_name)
+                    newImage_arrayPil.save(save_path)
+                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                                       image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+                    imageRegistry.append(newImage)
+                    newTask.taskStatus = "Finished"
+                    filterProcessing = False
+                    condition.notify_all()
+                    cnt_taskID += 1
+                    cnt_imageID += 1
+                    cnt_json += 1
+                    print("Odradjen adjustBrightness")
+                    break
+                else:
+                    continue
+                break    #mozda nepotrebno
                 #fali provera ukolika slika ne postoji u registru
 
 def list_command():
-    for image in imageRegistry:
-        print("Image id " + str(image.id))
-        print("Original " + str(image.original))
-        print("Image task " + str(image.taskId))
-        print("Image path " + image.imagePath)
-    print("kraj ispisa")
+    global condition, deleteProcessing, filterProcessing
+    with  condition:
+        while deleteProcessing & filterProcessing:
+            condition.wait()
+        for image in imageRegistry:
+            print("Image id " + str(image.id))
+            print("Original " + str(image.original))
+            print("Image task " + str(image.taskId))
+            print("Image path " + image.imagePath)
+        print("kraj ispisa")
 
 def describe():
-    for image in imageRegistry:
-        print("Image id " + str(image.id))
-def delete():#popraviti delete
-    id_image = input("Write your image id for delete: ")#pitati da li moze ovako
-    for image in imageRegistry:
-        print("Image " + str(id_image))
-        if image.id == int(id_image):
+    global condition, describeProcessing
+    with condition:
+        while filterProcessing:
+            condition.wait()
+        for image in imageRegistry:
             print("Image id " + str(image.id))
-            image.deleteFlag = True
-           # if image.original == True:
+def delete():
+    global imageRegistry, filterProcessing, condition,deleteProcessing
+    with condition:
+        while filterProcessing:
+            condition.wait()
+        deleteProcessing = True
+        id_image = input("Write your image id for delete: ")#pitati da li moze ovako
+        for image in imageRegistry:
+            print("Image " + str(id_image))
+            if image.id == int(id_image):
+                print("Image id " + str(image.id))
+                image.deleteFlag = True
+               # if image.original == True:
 
-            for task in taskRegistry:
-                if task.imageId == int(id_image):
-                    if task.taskStatus == "In processing":
-                        print("processing")
-                    elif task.taskStatus == "Finished":
-                        imageRegistry.remove(image)
-                        file_path = image.imagePath
-                        print("finished")
-                        if os.path.exists(file_path):
-                            print(image.imagePath)
-                            os.remove(file_path)
-                    else:
-                        print("wait")
+                for task in taskRegistry:
+                    if task.imageId == int(id_image):
+                        if task.taskStatus == "In processing":
+                            print("processing")
+                        elif task.taskStatus == "Finished":
+                            imageRegistry.remove(image)
+                            file_path = image.imagePath
+                            print("finished")
+                            if os.path.exists(file_path):
+                                print(image.imagePath)
+                                os.remove(file_path)
+                        else:
+                            print("wait")
+        deleteProcessing = False
 
 def exit_delete():
     for image in imageRegistry:
