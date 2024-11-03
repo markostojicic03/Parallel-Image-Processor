@@ -21,6 +21,7 @@ import sys
 from threading import Thread, Event
 from PIL import Image as PILImage
 import multiprocessing as mp
+import multiprocessing as mp
 
 
 
@@ -31,6 +32,7 @@ threadList = []
 eventQueue = Queue(0)
 filterProcessing = False
 deleteProcessing = False
+jsonFiles = ["../json/1.json", "../json/2.json", "../json/3.json"]
 #describeProcessing = False
 
 def grayscale(image_array):
@@ -108,10 +110,12 @@ class MyImage:
 
 @dataclass
 class Task:
-    def __init__(self,  taskStatus: str, filter_type_value: str ):
-        self.imageId = None
+    def __init__(self, taskId:int,taskStatus: str, taskName : str  ):
+        self.taskId = taskId
         self.taskStatus = taskStatus
-        self.filter_type = filter_type_value
+        self.taskName = taskName
+        self.pathForImage = None
+        self.imageId = None
 
 
 
@@ -144,7 +148,10 @@ def load_image(image_path):
     return np.array(image)
 #image_array = load_image("example.png")
 
-def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image: MyImage):
+def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image = None):
+    for imageElement in imageRegistry:
+        if image_id == imageElement.id:
+            image = imageElement
 
     if filter_type_value == "grayscale":
         newImage_array = grayscale(load_image(image.imagePath))
@@ -165,7 +172,6 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image:
         condition.notify_all()
         cnt_taskID += 1
         cnt_imageID += 1
-        cnt_json += 1
         print("Odradjen grayscale")
     elif filter_type_value == "gaussian_blur":
         newImage_array = gaussian_blur(load_image(image.imagePath))
@@ -186,7 +192,6 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image:
         condition.notify_all()
         cnt_taskID += 1
         cnt_imageID += 1
-        cnt_json += 1
         print("Odradjen gaussianBlur")
     elif filter_type_value == "adjust_brightness":
         newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
@@ -207,30 +212,39 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image:
         condition.notify_all()
         cnt_taskID += 1
         cnt_imageID += 1
-        cnt_json += 1
+
         print("Odradjen adjustBrightness")
 
 def processTask():
-    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition
+    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path
 
     with condition:
-        idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
-        for image1 in imageRegistry:
-            if image1.id == idImage_value:
-                image = image1
-                break
-        newTask = Task("In processing")
-        filterProcessing = True
-        newTask.imageId = idImage_value
-        taskRegistry.append(newTask)
-        folderName = "../slike"
-        file_name = str(image.id) + "gaussianBlur.jpg"
-        save_path = os.path.join(folderName, file_name)
-        pool = mp.Pool(mp.cpu_count())
-        p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
-        p2 = mp.Process(target = multiProcessTask(), args=('Marko', 2))
-            #mozda nepotrebno
-                    #fali provera ukolika slika ne postoji u registru
+
+        save_path = None
+        for jsonFile in jsonFiles:
+            idImage_value, filter_type_value = load_JSON_file(jsonFile)
+            for imageElement in imageRegistry:
+                if imageElement == idImage_value:
+                    image = imageElement
+                    newTask = Task(cnt_taskID,"Waiting",filter_type_value)
+                    filterProcessing = True
+                    newTask.imageId = idImage_value
+                    taskRegistry.append(newTask)
+                    folderName = "../slike"
+                    file_name = str(image.id) + filter_type_value + ".jpg"
+                    save_path = os.path.join(folderName, file_name)
+                    newTask.path = save_path
+                    cnt_taskID += 1
+
+        with mp.Pool(processes=mp.cpu_count()) as pool:
+            for task in taskRegistry:
+                pool.apply_async(multiProcessTask, args=(task.taskId, task.imageId,task.pathForImage,task.taskName))
+
+
+        #   pool = mp.Pool(mp.cpu_count())
+        # p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
+
+
 
 def list_command():
     global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing
@@ -300,6 +314,7 @@ def exit_delete():
 def command_input():
 
     global imageRegistry, taskRegistry, threadList,eventQueue
+
     # dodati periodicno proveravanje
     while True:
         command = input("Write the command you want to do: ")
@@ -337,7 +352,7 @@ def command_input():
             sys.exit()
         else:
             print("Nepoznata komanda.")
-        sleep(3)
+        sleep(1)#vratiti na 3 sekunde
         while not eventQueue.empty():
             try:
                 value = eventQueue.get(timeout=5)
