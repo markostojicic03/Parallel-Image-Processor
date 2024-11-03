@@ -149,7 +149,10 @@ def load_image(image_path):
 #image_array = load_image("example.png")
 
 def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image = None):
+    global imageRegistry,cnt_imageID,cnt_taskID
+    print("MULTIPROC")
     for imageElement in imageRegistry:
+        print("IMAGE: " + str(image.id))
         if image_id == imageElement.id:
             image = imageElement
 
@@ -216,29 +219,34 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image 
         print("Odradjen adjustBrightness")
 
 def processTask():
-    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path
+    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path, taskRegistry, imageRegistry
 
     with condition:
 
         save_path = None
         for jsonFile in jsonFiles:
+            print("USAO 226")
             idImage_value, filter_type_value = load_JSON_file(jsonFile)
             for imageElement in imageRegistry:
-                if imageElement == idImage_value:
+                print("USAO 229")
+                if imageElement.id == idImage_value:
+                    print("USAO 231")
                     image = imageElement
-                    newTask = Task(cnt_taskID,"Waiting",filter_type_value)
+                    newTask = Task(cnt_taskID,"Waiting",str(filter_type_value))
                     filterProcessing = True
                     newTask.imageId = idImage_value
                     taskRegistry.append(newTask)
                     folderName = "../slike"
                     file_name = str(image.id) + filter_type_value + ".jpg"
                     save_path = os.path.join(folderName, file_name)
-                    newTask.path = save_path
+                    newTask.taskName = save_path
                     cnt_taskID += 1
-
+        for image in imageRegistry:
+            print("ime taska "+str(image.id))
         with mp.Pool(processes=mp.cpu_count()) as pool:
             for task in taskRegistry:
-                pool.apply_async(multiProcessTask, args=(task.taskId, task.imageId,task.pathForImage,task.taskName))
+                print("putanja slike " + str(task.taskName))
+                pool.apply(multiProcessTask, args=(task.taskId, task.imageId,task.pathForImage,task.taskName))
 
 
         #   pool = mp.Pool(mp.cpu_count())
