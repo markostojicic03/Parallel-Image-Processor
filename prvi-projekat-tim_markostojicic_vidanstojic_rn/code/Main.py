@@ -20,6 +20,7 @@ import random
 import sys
 from threading import Thread, Event
 from PIL import Image as PILImage
+import multiprocessing as mp
 
 
 
@@ -107,9 +108,10 @@ class MyImage:
 
 @dataclass
 class Task:
-    def __init__(self,  taskStatus: str ):
+    def __init__(self,  taskStatus: str, filter_type_value: str ):
         self.imageId = None
         self.taskStatus = taskStatus
+        self.filter_type = filter_type_value
 
 
 
@@ -142,90 +144,92 @@ def load_image(image_path):
     return np.array(image)
 #image_array = load_image("example.png")
 
+def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image: MyImage):
+
+    if filter_type_value == "grayscale":
+        newImage_array = grayscale(load_image(image.imagePath))
+        newImage_arrayPil = Image.fromarray(newImage_array)
+        folderName = "../slike"
+        file_name = str(image.id) + "grayScale.jpg"
+        save_path = os.path.join(folderName, file_name)
+        newImage_arrayPil.save(save_path)
+        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+        imageRegistry.append(newImage)
+        if (image.taskId != None):
+            newImage.usedTasklist = image.usedTasklist.copy()
+            newImage.filterImageList = image.filterImageList.copy()
+        newImage.filterImageList.append(str(image.id))
+        newImage.usedTasklist.append(str(cnt_taskID))
+        filterProcessing = False
+        condition.notify_all()
+        cnt_taskID += 1
+        cnt_imageID += 1
+        cnt_json += 1
+        print("Odradjen grayscale")
+    elif filter_type_value == "gaussian_blur":
+        newImage_array = gaussian_blur(load_image(image.imagePath))
+        newImage_arrayPil = Image.fromarray(newImage_array)
+        folderName = "../slike"
+        file_name = str(image.id) + "gaussianBlur.jpg"
+        save_path = os.path.join(folderName, file_name)
+        newImage_arrayPil.save(save_path)
+        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+        imageRegistry.append(newImage)
+        if (image.taskId != None):
+            newImage.usedTasklist = image.usedTasklist.copy()
+            newImage.filterImageList = image.filterImageList.copy()
+        newImage.filterImageList.append(str(image.id))
+        newImage.usedTasklist.append(str(cnt_taskID))
+        filterProcessing = False
+        condition.notify_all()
+        cnt_taskID += 1
+        cnt_imageID += 1
+        cnt_json += 1
+        print("Odradjen gaussianBlur")
+    elif filter_type_value == "adjust_brightness":
+        newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+        newImage_arrayPil = Image.fromarray(newImage_array)
+        folderName = "../slike"
+        file_name = str(image.id) + "adjustBrightness.jpg"
+        save_path = os.path.join(folderName, file_name)
+        newImage_arrayPil.save(save_path)
+        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
+                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
+        imageRegistry.append(newImage)
+        if (image.taskId != None):
+            newImage.usedTasklist = image.usedTasklist.copy()
+            newImage.filterImageList = image.filterImageList.copy()
+        newImage.filterImageList.append(str(image.id))
+        newImage.usedTasklist.append(str(cnt_taskID))
+        filterProcessing = False
+        condition.notify_all()
+        cnt_taskID += 1
+        cnt_imageID += 1
+        cnt_json += 1
+        print("Odradjen adjustBrightness")
 
 def processTask():
     global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition
 
     with condition:
         idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
+        for image1 in imageRegistry:
+            if image1.id == idImage_value:
+                image = image1
+                break
         newTask = Task("In processing")
         filterProcessing = True
         newTask.imageId = idImage_value
         taskRegistry.append(newTask)
-        for image in imageRegistry:
-            if image.id == idImage_value:
-                if filter_type_value == "grayscale":
-                    newImage_array = grayscale(load_image(image.imagePath))
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id) + "grayScale.jpg"
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                    imageRegistry.append(newImage)
-                    if(image.taskId != None):
-                        newImage.usedTasklist = image.usedTasklist.copy()
-                        newImage.filterImageList = image.filterImageList.copy()
-                    newImage.filterImageList.append(str(image.id))
-                    newImage.usedTasklist.append(str(cnt_taskID))
-                    newTask.taskStatus = "Finished"
-                    filterProcessing = False
-                    condition.notify_all()
-                    cnt_taskID += 1
-                    cnt_imageID += 1
-                    cnt_json += 1
-                    print("Odradjen grayscale")
-                    break
-                elif filter_type_value == "gaussian_blur":
-                    newImage_array = gaussian_blur(load_image(image.imagePath))
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id) + "gaussianBlur.jpg"
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                    imageRegistry.append(newImage)
-                    if (image.taskId != None):
-                        newImage.usedTasklist = image.usedTasklist.copy()
-                        newImage.filterImageList = image.filterImageList.copy()
-                    newImage.filterImageList.append(str(image.id))
-                    newImage.usedTasklist.append(str(cnt_taskID))
-                    newTask.taskStatus = "Finished"
-                    filterProcessing = False
-                    condition.notify_all()
-                    cnt_taskID += 1
-                    cnt_imageID += 1
-                    cnt_json += 1
-                    print("Odradjen gaussianBlur")
-                    break
-                elif filter_type_value == "adjust_brightness":
-                    newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
-                    newImage_arrayPil = Image.fromarray(newImage_array)
-                    folderName = "../slike"
-                    file_name = str(image.id) + "adjustBrightness.jpg"
-                    save_path = os.path.join(folderName, file_name)
-                    newImage_arrayPil.save(save_path)
-                    newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                                    image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-                    imageRegistry.append(newImage)
-                    if (image.taskId != None):
-                        newImage.usedTasklist = image.usedTasklist.copy()
-                        newImage.filterImageList = image.filterImageList.copy()
-                    newImage.filterImageList.append(str(image.id))
-                    newImage.usedTasklist.append(str(cnt_taskID))
-                    newTask.taskStatus = "Finished"
-                    filterProcessing = False
-                    condition.notify_all()
-                    cnt_taskID += 1
-                    cnt_imageID += 1
-                    cnt_json += 1
-                    print("Odradjen adjustBrightness")
-                    break
-                else:
-                    continue
-                break    #mozda nepotrebno
+        folderName = "../slike"
+        file_name = str(image.id) + "gaussianBlur.jpg"
+        save_path = os.path.join(folderName, file_name)
+        pool = mp.Pool(mp.cpu_count())
+        p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
+        p2 = mp.Process(target = multiProcessTask(), args=('Marko', 2))
+            #mozda nepotrebno
                     #fali provera ukolika slika ne postoji u registru
 
 def list_command():
