@@ -30,7 +30,7 @@ threadList = []
 eventQueue = Queue(0)
 filterProcessing = False
 deleteProcessing = False
-describeProcessing = False
+#describeProcessing = False
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -45,26 +45,22 @@ def grayscale(image_array):
 # sigma: Vrednost standardne devijacije
 def gaussian_blur(image_array, sigma=1):
 
-    # Primena Gaussian blur na R, G, B kanale
+
     red_channel = gaussian_filter(image_array[..., 0], sigma=sigma)
     green_channel = gaussian_filter(image_array[..., 1], sigma=sigma)
     blue_channel = gaussian_filter(image_array[..., 2], sigma=sigma)
 
-    # Kombinovanje kanala nazad u jednu sliku
     blurred_image = np.zeros_like(image_array)
     blurred_image[..., 0] = red_channel
     blurred_image[..., 1] = green_channel
     blurred_image[..., 2] = blue_channel
 
-    # Ukoliko nam postoji i alfa kanal,
-    # potrebno je da i njega iskombinujemo kako bismo dobili RGBA kao što je bilo u originalnoj slici
     if image_array.shape[-1] == 4:
         alpha_channel = image_array[..., 3]
         blurred_image[..., 3] = alpha_channel
 
     blurred_image = np.clip(blurred_image, 0, 255)
 
-    # Osigurajte da su vrednosti u validnom opsegu
     return blurred_image.astype(np.uint8)
 
 
@@ -78,7 +74,7 @@ def adjust_brightness(image_array, factor=1.0):
     adjusted_image = np.where(adjusted_image > 255, 255, adjusted_image)  # Postavljanje vrednosti iznad 255 na 255
     '''
 
-    # Osiguravamo da vrednosti ostanu između 0 i 255
+
     adjusted_image = np.clip(image_array, 0, 255)
 
     return adjusted_image.astype(np.uint8)
@@ -111,13 +107,12 @@ class MyImage:
 
 @dataclass
 class Task:
-    #   PROVERITI GDE TREBA DA STAVIMO CONDITION ACQUIRE/WAIT
     def __init__(self,  taskStatus: str ):
         self.imageId = None
         self.taskStatus = taskStatus
 
 
-#C:\Users\Marko\Desktop\slika.jpg
+
 cnt_taskID = 1
 cnt_imageID = 1
 cnt_json = 1
@@ -147,22 +142,14 @@ def load_image(image_path):
     return np.array(image)
 #image_array = load_image("example.png")
 
-def exit():#dodati brisanje svih slika iz liste i fajla
-   # for thread in threadList:
-    #    thread.join()#proveriti jos jednom da li na ovaj nacin treba da radimo
-    exit_delete()
-    print("Exiting program")
 
-
-# Ispod je apsolutna putanja do json fajla, zameniti za relativnu
-#   D:\\Marko workspace\\Fakultet\\Projekti\\pp24-25-prvi-projekat-tim_markostojcic_vidanstoijc_rn\\prvi-projekat-tim_markostojcic_vidanstoijc_rn\\json\\proba.json
 def processTask():
     global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition
 
     with condition:
         idImage_value, filter_type_value = load_JSON_file("../json/" + str(cnt_json) + ".json")
         newTask = Task("In processing")
-         filterProcessing = True
+        filterProcessing = True
         newTask.imageId = idImage_value
         taskRegistry.append(newTask)
         for image in imageRegistry:
@@ -173,15 +160,13 @@ def processTask():
                     folderName = "../slike"
                     file_name = str(image.id) + "grayScale.jpg"
                     save_path = os.path.join(folderName, file_name)
-                    # Sačuvaj sliku u tom folderu
                     newImage_arrayPil.save(save_path)
                     newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
                                     image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
                     imageRegistry.append(newImage)
-                    if(image.taskId != None):# filterImage = 1     taskList = 1 1
+                    if(image.taskId != None):
                         newImage.usedTasklist = image.usedTasklist.copy()
                         newImage.filterImageList = image.filterImageList.copy()
-                        #newImage.usedTasklist.append(str(image.taskId))
                     newImage.filterImageList.append(str(image.id))
                     newImage.usedTasklist.append(str(cnt_taskID))
                     newTask.taskStatus = "Finished"
@@ -205,7 +190,6 @@ def processTask():
                     if (image.taskId != None):
                         newImage.usedTasklist = image.usedTasklist.copy()
                         newImage.filterImageList = image.filterImageList.copy()
-                        #newImage.usedTasklist.append(str(image.taskId))
                     newImage.filterImageList.append(str(image.id))
                     newImage.usedTasklist.append(str(cnt_taskID))
                     newTask.taskStatus = "Finished"
@@ -229,7 +213,6 @@ def processTask():
                     if (image.taskId != None):
                         newImage.usedTasklist = image.usedTasklist.copy()
                         newImage.filterImageList = image.filterImageList.copy()
-                        #newImage.usedTasklist.append(str(image.taskId))
                     newImage.filterImageList.append(str(image.id))
                     newImage.usedTasklist.append(str(cnt_taskID))
                     newTask.taskStatus = "Finished"
@@ -247,16 +230,17 @@ def processTask():
 
 def list_command():
     global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing
-     with  condition:
+    with  condition:
         while deleteProcessing & filterProcessing:
             condition.wait()
         for image in imageRegistry:
             imageValue = "Image ID " + str(image.id) + ", image path " + str(image.imagePath)
             eventQueue.put(imageValue)
 
+# proveriti da li je potrebno namestiti da dok se jedna slika filtrira, druga slika radi describe
 def describe():
     global eventQueue, condition, filterProcessing
-     with condition:
+    with condition:
         while filterProcessing:
             condition.wait()
         for image in imageRegistry:
@@ -270,7 +254,7 @@ def describe():
                 imageValue += str + " "
             eventQueue.put(imageValue)
 
-def delete():#popraviti delete
+def delete():
     global imageRegistry, filterProcessing, condition,deleteProcessing
     id_image = input("Write your image id for delete: ")#pitati da li moze ovako
     with condition:
@@ -298,6 +282,7 @@ def delete():#popraviti delete
         deleteProcessing = False
 
 def exit_delete():
+    eventQueue.put("exit")
     for image in imageRegistry:
         file_path = image.imagePath
         print(file_path)
@@ -307,7 +292,7 @@ def exit_delete():
             threadElement.join()
         else:
             print(threadElement.name)
-#C:\Users\Marko\Desktop\slika.jpg
+
 def command_input():
 
     global imageRegistry, taskRegistry, threadList,eventQueue
@@ -350,9 +335,11 @@ def command_input():
             print("Nepoznata komanda.")
         sleep(3)
         while not eventQueue.empty():
-            print("usao")
             try:
                 value = eventQueue.get(timeout=5)
+                if (value == "exit"):
+                    print("Izlazak iz programa - exit")
+                    sys.exit()
                 print(value)
             except Empty:
                 pass
@@ -363,3 +350,4 @@ if __name__ == "__main__":
     threadList.append(threadMain)
     threadMain.join()
 #C:\Users\vidan_gofx79m\Desktop\slika.jpg
+#C:\Users\Marko\Desktop\slika.jpg
