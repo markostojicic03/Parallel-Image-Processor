@@ -148,7 +148,7 @@ def load_image(image_path):
     return np.array(image)
 #image_array = load_image("example.png")
 
-def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image = None):
+def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, imagePath):
     global imageRegistry,cnt_imageID,cnt_taskID
     print("MULTIPROC")
     for imageElement in imageRegistry:
@@ -157,67 +157,38 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, image 
             image = imageElement
 
     if filter_type_value == "grayscale":
-        newImage_array = grayscale(load_image(image.imagePath))
+        newImage_array = grayscale(load_image(imagePath))
         newImage_arrayPil = Image.fromarray(newImage_array)
         folderName = "../slike"
-        file_name = str(image.id) + "grayScale.jpg"
+        file_name = str(image_id) + "grayScale.jpg"
         save_path = os.path.join(folderName, file_name)
         newImage_arrayPil.save(save_path)
-        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-        imageRegistry.append(newImage)
-        if (image.taskId != None):
-            newImage.usedTasklist = image.usedTasklist.copy()
-            newImage.filterImageList = image.filterImageList.copy()
-        newImage.filterImageList.append(str(image.id))
-        newImage.usedTasklist.append(str(cnt_taskID))
-        filterProcessing = False
-        condition.notify_all()
-        cnt_taskID += 1
-        cnt_imageID += 1
+        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
+                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, save_path)
         print("Odradjen grayscale")
+        return newImage
     elif filter_type_value == "gaussian_blur":
-        newImage_array = gaussian_blur(load_image(image.imagePath))
+        newImage_array = gaussian_blur(load_image(imagePath))
         newImage_arrayPil = Image.fromarray(newImage_array)
         folderName = "../slike"
-        file_name = str(image.id) + "gaussianBlur.jpg"
+        file_name = str(image_id) + "gaussianBlur.jpg"
         save_path = os.path.join(folderName, file_name)
         newImage_arrayPil.save(save_path)
-        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-        imageRegistry.append(newImage)
-        if (image.taskId != None):
-            newImage.usedTasklist = image.usedTasklist.copy()
-            newImage.filterImageList = image.filterImageList.copy()
-        newImage.filterImageList.append(str(image.id))
-        newImage.usedTasklist.append(str(cnt_taskID))
-        filterProcessing = False
-        condition.notify_all()
-        cnt_taskID += 1
-        cnt_imageID += 1
+        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
+                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, save_path)
         print("Odradjen gaussianBlur")
+        return newImage
     elif filter_type_value == "adjust_brightness":
-        newImage_array = adjust_brightness(load_image(image.imagePath), 2.0)
+        newImage_array = adjust_brightness(load_image(imagePath), 2.0)
         newImage_arrayPil = Image.fromarray(newImage_array)
         folderName = "../slike"
-        file_name = str(image.id) + "adjustBrightness.jpg"
+        file_name = str(image_id) + "adjustBrightness.jpg"
         save_path = os.path.join(folderName, file_name)
         newImage_arrayPil.save(save_path)
-        newImage = MyImage(False, cnt_imageID, cnt_taskID, False, datetime.now(),
-                           image.imageSizeBeforeProcessing, os.path.getsize(image.imagePath) * 1.0, save_path)
-        imageRegistry.append(newImage)
-        if (image.taskId != None):
-            newImage.usedTasklist = image.usedTasklist.copy()
-            newImage.filterImageList = image.filterImageList.copy()
-        newImage.filterImageList.append(str(image.id))
-        newImage.usedTasklist.append(str(cnt_taskID))
-        filterProcessing = False
-        condition.notify_all()
-        cnt_taskID += 1
-        cnt_imageID += 1
-
+        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
+                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, save_path)
         print("Odradjen adjustBrightness")
-
+        return newImage
 def processTask():
     global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path, taskRegistry, imageRegistry
 
@@ -225,12 +196,12 @@ def processTask():
 
         save_path = None
         for jsonFile in jsonFiles:
-            print("USAO 226")
+            #print("USAO 226")
             idImage_value, filter_type_value = load_JSON_file(jsonFile)
             for imageElement in imageRegistry:
-                print("USAO 229")
+             #   print("USAO 229")
                 if imageElement.id == idImage_value:
-                    print("USAO 231")
+              #      print("USAO 231")
                     image = imageElement
                     newTask = Task(cnt_taskID,"Waiting",str(filter_type_value))
                     filterProcessing = True
@@ -241,13 +212,20 @@ def processTask():
                     save_path = os.path.join(folderName, file_name)
                     newTask.taskName = save_path
                     cnt_taskID += 1
-        for image in imageRegistry:
-            print("ime taska "+str(image.id))
         with mp.Pool(processes=mp.cpu_count()) as pool:
             for task in taskRegistry:
                 print("putanja slike " + str(task.taskName))
-                pool.apply(multiProcessTask, args=(task.taskId, task.imageId,task.pathForImage,task.taskName))
-
+                newImage = pool.apply(multiProcessTask, args=(task.taskId, task.imageId, task.pathForImage,filter_type_value, image.imagePath))
+                newImage.imageSizeBeforeProcessing = image.imageSizeBeforeProcessing
+                if (image.taskId != None):
+                    newImage.usedTasklist = image.usedTasklist.copy()
+                    newImage.filterImageList = image.filterImageList.copy()
+                newImage.filterImageList.append(str(image.id))
+                newImage.usedTasklist.append(str(task.taskId))
+                condition.notify_all()
+                cnt_taskID += 1
+                cnt_imageID += 1
+                imageRegistry.append(newImage)
 
         #   pool = mp.Pool(mp.cpu_count())
         # p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
