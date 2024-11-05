@@ -106,11 +106,12 @@ class MyImage:
         self.imageSizeBeforeProcessing = imageSizeBeforeProcessing
         self.imageSizeAfterProcessing = imageSizeAfterProcessing
         self.imagePath = imagePath
+        self.filterType = None
 
 
 @dataclass
 class Task:
-    def __init__(self, taskId:int,taskStatus: str, taskName : str, imagePath: str, filterType: str  ):
+    def __init__(self, taskId:int,taskStatus: str, taskName : str, imagePath: str, filterType: str, image = None  ):
         self.taskId = taskId
         self.taskStatus = taskStatus
         self.filterType = filterType
@@ -118,6 +119,7 @@ class Task:
         self.pathForImage = None
         self.imageId = None
         self.imagePath = imagePath
+        self.image = image
 
 
 cnt_taskID = 1
@@ -156,40 +158,44 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, imageP
         newImage_array = grayscale(load_image(imagePath))
         newImage_arrayPil = Image.fromarray(newImage_array)
         newImage_arrayPil.save(newImage_path)
-        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
-                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, newImage_path)
+        newImage = MyImage(False, image_id, task_id, False, datetime.now(), os.path.getsize(imagePath),
+                           os.path.getsize(imagePath) * 1.0, newImage_path)
         print("Odradjen grayscale")
         return newImage
     elif filter_type_value == "gaussian_blur":
         newImage_array = gaussian_blur(load_image(imagePath))
         newImage_arrayPil = Image.fromarray(newImage_array)
         newImage_arrayPil.save(newImage_path)
-        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
-                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, newImage_path)
+        newImage = MyImage(False, image_id, task_id, False, datetime.now(), os.path.getsize(imagePath),
+                           os.path.getsize(imagePath) * 1.0, newImage_path)
         print("Odradjen gaussianBlur")
         return newImage
     elif filter_type_value == "adjust_brightness":
         newImage_array = adjust_brightness(load_image(imagePath), 2.0)
         newImage_arrayPil = Image.fromarray(newImage_array)
         newImage_arrayPil.save(newImage_path)
-        newImage = MyImage(False, image_id+1, task_id, False, datetime.now(),
-                           os.path.getsize(imagePath), os.path.getsize(imagePath) * 1.0, newImage_path)
+        newImage = MyImage(False, image_id, task_id, False, datetime.now(), os.path.getsize(imagePath),
+                           os.path.getsize(imagePath) * 1.0, newImage_path)
         print("Odradjen adjustBrightness")
         return newImage
 def processTask():
-    global cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path, taskRegistry, imageRegistry
-
+    global imageRegistry, taskRegistry, cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path
+    file = None
+    removeList = []
     with condition:
 
         save_path = None
+
         for jsonFile in jsonFiles:
             #print("USAO 226")
             idImage_value, filter_type_value = load_JSON_file(jsonFile)
             for imageElement in imageRegistry:
              #   print("USAO 229")
                 if imageElement.id == idImage_value:
-              #      print("USAO 231")
+                    file = jsonFile
+                    print("USAO 231")
                     image = imageElement
+                    image.filterType = filter_type_value
                     newTask = Task(cnt_taskID,"Waiting","", image.imagePath, str(filter_type_value))
                     filterProcessing = True
                     newTask.imageId = idImage_value
@@ -198,29 +204,36 @@ def processTask():
                     file_name = str(image.id) + filter_type_value + ".jpg"
                     save_path = os.path.join(folderName, file_name)
                     newTask.taskName = save_path
+                    newTask.image = image
                     cnt_taskID += 1
+                    removeList.append(file)
+        for file in removeList:
+            jsonFiles.remove(file)
         with mp.Pool(processes=mp.cpu_count()) as pool:
             for task in taskRegistry:
-                print("putanja slike " + str(task.taskName))
-                newImage = pool.apply(multiProcessTask, args=(task.taskId, task.imageId, task.taskName,task.filterType, task.imagePath))
-                newImage.imageSizeBeforeProcessing = image.imageSizeBeforeProcessing
-                if (image.taskId != None):
-                    newImage.usedTasklist = image.usedTasklist.copy()
-                    newImage.filterImageList = image.filterImageList.copy()
-                newImage.filterImageList.append(str(image.id))
-                newImage.usedTasklist.append(str(task.taskId))
-                condition.notify_all()
-                cnt_taskID += 1
-                cnt_imageID += 1
-                imageRegistry.append(newImage)
-
+                if(task.taskStatus != "Finished"):
+                #print("putanja slike " + str(task.taskName))
+                    newImage = pool.apply(multiProcessTask, args=(task.taskId, cnt_imageID, task.taskName,task.filterType, task.imagePath))
+                    newImage.imageSizeBeforeProcessing = task.image.imageSizeBeforeProcessing
+                    if (task.image.taskId != None):
+                        newImage.usedTasklist = task.image.usedTasklist.copy()
+                        newImage.filterImageList = task.image.filterImageList.copy()
+                    newImage.filterImageList.append(str(task.image.id))
+                    newImage.usedTasklist.append(str(task.taskId))
+                    newImage.id = cnt_imageID
+                    condition.notify_all()
+                    cnt_imageID += 1
+                    print("new image " + str(newImage.id))
+                    imageRegistry.append(newImage)
+                    task.taskStatus = "Finished"
+        filterProcessing = False
         #   pool = mp.Pool(mp.cpu_count())
         # p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
 
 
 
 def list_command():
-    global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing
+    global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing, imageRegistry
     with  condition:
         while deleteProcessing & filterProcessing:
             condition.wait()
@@ -230,49 +243,53 @@ def list_command():
 
 # proveriti da li je potrebno namestiti da dok se jedna slika filtrira, druga slika radi describe
 def describe():
-    global eventQueue, condition, filterProcessing
+    global eventQueue, condition, filterProcessing, imageRegistry
     with condition:
         while filterProcessing:
             condition.wait()
         for image in imageRegistry:
-            imageValue = "Image ID "
+            imageValue = "Image ID " + str(image.id) + " made of images "
             if image.original == True:
                 continue
-            for str in image.filterImageList:
-                imageValue += str + " "
+            for str1 in image.filterImageList:
+                imageValue += str1 + " "
             imageValue += ", used task "
-            for str in image.usedTasklist:
-                imageValue += str + " "
+            for str1 in image.usedTasklist:
+                imageValue += str1 + " "
             eventQueue.put(imageValue)
 
 def delete():
-    global imageRegistry, filterProcessing, condition,deleteProcessing
-    id_image = input("Write your image id for delete: ")#pitati da li moze ovako
+    global imageRegistry, filterProcessing, condition, deleteProcessing
+    id_image = input("Write your image id for delete: ")  # pitati da li moze ovako
     with condition:
         while filterProcessing:
+            print("Waiting filter")
             condition.wait()
         deleteProcessing = True
+        toDelete = None
+        indexForDelete = -1
+        i = -1
         for image in imageRegistry:
-            print("Image " + str(id_image))
+            i += 1
+            # print("Image " + str(id_image))
             if image.id == int(id_image):
-                print("Image id " + str(image.id))
+                # print("Image id " + str(image.id))
                 image.deleteFlag = True
-                for task in taskRegistry:
-                    if task.imageId == int(id_image):
-                        if task.taskStatus == "In processing":
-                            print("processing")
-                        elif task.taskStatus == "Finished":
-                            imageRegistry.remove(image)
-                            file_path = image.imagePath
-                            print("finished")
-                            if os.path.exists(file_path):
-                                print(image.imagePath)
-                                os.remove(file_path)
-                        else:
-                            print("wait")
+                toDelete = image
+                file_path = image.imagePath
+                indexForDelete = i
+                print("Deleted.")
+                if os.path.exists(file_path):
+                    print(image.imagePath)
+                    os.remove(file_path)
+            # mislim da u delete ne moramo da proveravamo taskove jer svakako imamo condition koji obezbedjuje da ce se sa brisanjem sacekati dok taskovi ne zavrse
+
+        print("Brisem sliku sa id-ijem:" + str(toDelete.id))
+        del imageRegistry[indexForDelete]
         deleteProcessing = False
 
 def exit_delete():
+    global imageRegistry
     eventQueue.put("exit")
     for image in imageRegistry:
         file_path = image.imagePath
