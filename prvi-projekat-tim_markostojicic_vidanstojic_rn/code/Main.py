@@ -191,18 +191,24 @@ def processTask():
               #      print("USAO 231")
                     image = imageElement
                     newTask = Task(cnt_taskID,"Waiting","", image.imagePath, str(filter_type_value))
-                    filterProcessing = True
                     newTask.imageId = idImage_value
                     taskRegistry.append(newTask)
                     folderName = "../slike"
                     file_name = str(image.id) + filter_type_value + ".jpg"
                     save_path = os.path.join(folderName, file_name)
-                    newTask.taskName = save_path
+                    newTask.pathForImage = save_path
+                    newTask.taskName = str(filter_type_value)
                     cnt_taskID += 1
+
+        cnt_imageID -= 1
         with mp.Pool(processes=mp.cpu_count()) as pool:
             for task in taskRegistry:
-                print("putanja slike " + str(task.taskName))
-                newImage = pool.apply(multiProcessTask, args=(task.taskId, task.imageId, task.taskName,task.filterType, task.imagePath))
+                print("Task id: "+ str(task.taskId))
+               # print("putanja slike " + str(task.taskName))
+                filterProcessing = True
+                task.taskStatus = "In processing"
+               # print("Cnt image: "+str(cnt_imageID)+", za putanju "+str(task.pathForImage))
+                newImage = pool.apply(multiProcessTask, args=(task.taskId, cnt_imageID, task.pathForImage,task.filterType, task.imagePath))
                 newImage.imageSizeBeforeProcessing = image.imageSizeBeforeProcessing
                 if (image.taskId != None):
                     newImage.usedTasklist = image.usedTasklist.copy()
@@ -213,14 +219,16 @@ def processTask():
                 cnt_taskID += 1
                 cnt_imageID += 1
                 imageRegistry.append(newImage)
-
+                task.taskStatus = "Finished"
+                filterProcessing = False
+        filterProcessing = False
         #   pool = mp.Pool(mp.cpu_count())
         # p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
 
 
 
 def list_command():
-    global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing
+    global eventQueue, eventFlag, condition, deleteProcessing, filterProcessing, imageRegistry
     with  condition:
         while deleteProcessing & filterProcessing:
             condition.wait()
@@ -250,27 +258,31 @@ def delete():
     id_image = input("Write your image id for delete: ")#pitati da li moze ovako
     with condition:
         while filterProcessing:
+            print("Waiting filter")
             condition.wait()
         deleteProcessing = True
+        toDelete = None
+        indexForDelete = -1
+        i = -1
         for image in imageRegistry:
-            print("Image " + str(id_image))
+            i += 1
+            #print("Image " + str(id_image))
             if image.id == int(id_image):
-                print("Image id " + str(image.id))
+                #print("Image id " + str(image.id))
                 image.deleteFlag = True
-                for task in taskRegistry:
-                    if task.imageId == int(id_image):
-                        if task.taskStatus == "In processing":
-                            print("processing")
-                        elif task.taskStatus == "Finished":
-                            imageRegistry.remove(image)
-                            file_path = image.imagePath
-                            print("finished")
-                            if os.path.exists(file_path):
-                                print(image.imagePath)
-                                os.remove(file_path)
-                        else:
-                            print("wait")
+                toDelete = image
+                file_path = image.imagePath
+                indexForDelete = i
+                print("Deleted.")
+                if os.path.exists(file_path):
+                    print(image.imagePath)
+                    os.remove(file_path)
+            # mislim da u delete ne moramo da proveravamo taskove jer svakako imamo condition koji obezbedjuje da ce se sa brisanjem sacekati dok taskovi ne zavrse
+
+        print("Brisem sliku sa id-ijem:"+str(toDelete.id))
+        del imageRegistry[indexForDelete]
         deleteProcessing = False
+
 
 def exit_delete():
     eventQueue.put("exit")
