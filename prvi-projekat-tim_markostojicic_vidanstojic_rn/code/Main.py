@@ -1,26 +1,17 @@
 import json
 import os
-import queue
 import shutil
 from datetime import datetime
-from io import StringIO
 from queue import Queue, Empty
 from time import sleep
 from xmlrpc.client import DateTime
 from PIL import Image
 import numpy as np
 from scipy.ndimage import gaussian_filter
-import argparse
-import sys
-import threading
 from dataclasses import dataclass, field
 import threading
-import time
-import random
 import sys
-from threading import Thread, Event
 from PIL import Image as PILImage
-import multiprocessing as mp
 import multiprocessing as mp
 
 
@@ -30,22 +21,20 @@ taskRegistry = []
 condition = threading.Condition()
 threadList = []
 eventQueue = Queue(0)
+completedTasksQueue = Queue(0)
 filterProcessing = False
 deleteProcessing = False
 jsonFiles = ["../json/1.json", "../json/2.json", "../json/3.json"]
-#describeProcessing = False
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
     green_channel = image_array[..., 1]
     blue_channel = image_array[..., 2]
 
-    # Ponderisane vrednosti za RGB komponente
     grayscale_image = (red_channel * 0.299 + green_channel * 0.587 + blue_channel * 0.114)
     return grayscale_image.astype(np.uint8)
 
 
-# sigma: Vrednost standardne devijacije
 def gaussian_blur(image_array, sigma=1):
 
 
@@ -68,15 +57,8 @@ def gaussian_blur(image_array, sigma=1):
 
 
 def adjust_brightness(image_array, factor=1.0):
-    mean_intensity = np.mean(image_array, axis=(0, 1), keepdims=True)  # Računanje srednje vrednosti piksela
-    image_array = (image_array - mean_intensity) * factor + mean_intensity  # Skaliranje prema srednjoj vrednosti
-
-    '''
-    # Ručno implementirani clamp
-    adjusted_image = np.where(image_array < 0, 0, image_array)  # Postavljanje vrednosti ispod 0 na 0
-    adjusted_image = np.where(adjusted_image > 255, 255, adjusted_image)  # Postavljanje vrednosti iznad 255 na 255
-    '''
-
+    mean_intensity = np.mean(image_array, axis=(0, 1), keepdims=True)
+    image_array = (image_array - mean_intensity) * factor + mean_intensity
 
     adjusted_image = np.clip(image_array, 0, 255)
 
@@ -128,10 +110,10 @@ cnt_json = 1
 def add_image():
     global cnt_imageID
     global imageRegistry
-    image_path = input("Write your image path: ")
+    image_path = input("Write your image path(for example  ../imageResources/slika1.jpg): ")
 
     target_dir = "../slike"
-    os.makedirs(target_dir, exist_ok=True)  # Kreira folder ako ne postoji
+    os.makedirs(target_dir, exist_ok=True)
     try:
         image_name = os.path.basename(image_path)
         target_path = os.path.join(target_dir, image_name)
@@ -149,10 +131,9 @@ def add_image():
 def load_image(image_path):
     image = PILImage.open(image_path)
     return np.array(image)
-#image_array = load_image("example.png")
 
 def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, imagePath):
-    print("MULTIPROC")
+
 
     if filter_type_value == "grayscale":
         newImage_array = grayscale(load_image(imagePath))
@@ -180,20 +161,16 @@ def multiProcessTask(task_id, image_id, newImage_path, filter_type_value, imageP
         return newImage
 def processTask():
     global imageRegistry, taskRegistry, cnt_taskID, cnt_imageID, cnt_json, filterProcessing,condition, save_path
-    file = None
     removeList = []
     with condition:
 
         save_path = None
 
         for jsonFile in jsonFiles:
-            #print("USAO 226")
             idImage_value, filter_type_value = load_JSON_file(jsonFile)
             for imageElement in imageRegistry:
-             #   print("USAO 229")
                 if imageElement.id == idImage_value:
                     file = jsonFile
-                    print("USAO 231")
                     image = imageElement
                     image.filterType = filter_type_value
                     newTask = Task(cnt_taskID,"Waiting","", image.imagePath, str(filter_type_value))
@@ -209,10 +186,9 @@ def processTask():
                     removeList.append(file)
         for file in removeList:
             jsonFiles.remove(file)
-        with mp.Pool(processes=mp.cpu_count()) as pool:
+        with mp.Pool(processes=2) as pool:
             for task in taskRegistry:
                 if(task.taskStatus != "Finished"):
-                #print("putanja slike " + str(task.taskName))
                     newImage = pool.apply(multiProcessTask, args=(task.taskId, cnt_imageID, task.taskName,task.filterType, task.imagePath))
                     newImage.imageSizeBeforeProcessing = task.image.imageSizeBeforeProcessing
                     if (task.image.taskId != None):
@@ -225,11 +201,10 @@ def processTask():
                     cnt_imageID += 1
                     print("new image " + str(newImage.id))
                     imageRegistry.append(newImage)
+                    callbackFunction(task.taskId)
                     task.taskStatus = "Finished"
+        completedTasksQueue.put(None)
         filterProcessing = False
-        #   pool = mp.Pool(mp.cpu_count())
-        # p1 = mp.Process(target = multiProcessTask(), args=(cnt_taskID, image.id, save_path,filter_type_value, image))
-
 
 
 def list_command():
@@ -241,7 +216,6 @@ def list_command():
             imageValue = "Image ID " + str(image.id) + ", image path " + str(image.imagePath)
             eventQueue.put(imageValue)
 
-# proveriti da li je potrebno namestiti da dok se jedna slika filtrira, druga slika radi describe
 def describe():
     global eventQueue, condition, filterProcessing, imageRegistry
     with condition:
@@ -271,9 +245,8 @@ def delete():
         i = -1
         for image in imageRegistry:
             i += 1
-            # print("Image " + str(id_image))
             if image.id == int(id_image):
-                # print("Image id " + str(image.id))
+
                 image.deleteFlag = True
                 toDelete = image
                 file_path = image.imagePath
@@ -282,7 +255,6 @@ def delete():
                 if os.path.exists(file_path):
                     print(image.imagePath)
                     os.remove(file_path)
-            # mislim da u delete ne moramo da proveravamo taskove jer svakako imamo condition koji obezbedjuje da ce se sa brisanjem sacekati dok taskovi ne zavrse
 
         print("Brisem sliku sa id-ijem:" + str(toDelete.id))
         del imageRegistry[indexForDelete]
@@ -301,9 +273,26 @@ def exit_delete():
         else:
             print(threadElement.name)
 
+def callbackFunction(taskId):
+    completedTasksQueue.put(taskId)
+    print(f"Task {taskId} is finished!")
+
+def taskCompleted():
+    while True:
+        taskId = completedTasksQueue.get()
+        if(taskId == None):
+            break
+    with condition:
+        condition.notify_all()
+    print("Red za zavrsene taskove je prazan.")
+
 def command_input():
 
     global imageRegistry, taskRegistry, threadList,eventQueue
+
+    taskCompletedThread = threading.Thread(target=taskCompleted)  # PROVERITI DA LI JE OVDE POTREBNO KREIRATI OVU NIT
+    taskCompletedThread.start()
+    threadList.append(taskCompletedThread)
 
     # dodati periodicno proveravanje
     while True:
