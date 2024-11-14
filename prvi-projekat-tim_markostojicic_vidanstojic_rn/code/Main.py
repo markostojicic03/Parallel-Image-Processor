@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from datetime import datetime
+from os import cpu_count
 from queue import Queue, Empty
 from time import sleep
 from xmlrpc.client import DateTime
@@ -189,7 +190,7 @@ def processTask():
                     removeList.append(file)
         for file in removeList:
             jsonFiles.remove(file)
-        with mp.Pool(processes=2) as pool:
+        with mp.Pool(processes = mp.cpu_count()) as pool:
             for task in taskRegistry:
                 if(task.taskStatus != "Finished"):
                     newImage = pool.apply(multiProcessTask, args=(task.taskId, cnt_imageID, task.taskName,task.filterType, task.imagePath))
