@@ -234,7 +234,7 @@ def describe():
 
 def delete():
     global imageRegistry, filterProcessing, condition, deleteProcessing
-    id_image = input("Write your image id for delete: ")  # pitati da li moze ovako
+    id_image = input("Write your image id for delete: ")
     with condition:
         while filterProcessing:
             print("Waiting filter")
@@ -268,7 +268,7 @@ def exit_delete():
         print(file_path)
         os.remove(file_path)
     for threadElement in threadList:
-        if threadElement != threading.current_thread(): #proveriti da li je potrebno da se stavi i exit nit u listu niti
+        if threadElement != threading.current_thread():
             threadElement.join()
         else:
             print(threadElement.name)
@@ -290,11 +290,11 @@ def command_input():
 
     global imageRegistry, taskRegistry, threadList,eventQueue
 
-    taskCompletedThread = threading.Thread(target=taskCompleted)  # PROVERITI DA LI JE OVDE POTREBNO KREIRATI OVU NIT
+    taskCompletedThread = threading.Thread(target=taskCompleted)
     taskCompletedThread.start()
     threadList.append(taskCompletedThread)
 
-    # dodati periodicno proveravanje
+
     while True:
         command = input("Write the command you want to do: ")
 
@@ -331,7 +331,7 @@ def command_input():
             sys.exit()
         else:
             print("Nepoznata komanda.")
-        sleep(1)#vratiti na 3 sekunde
+        sleep(2)
         while not eventQueue.empty():
             try:
                 value = eventQueue.get(timeout=5)
