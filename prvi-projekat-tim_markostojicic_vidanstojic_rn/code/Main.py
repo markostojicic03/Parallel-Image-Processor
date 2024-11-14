@@ -28,10 +28,7 @@ jsonFiles = ["../json/1.json", "../json/2.json", "../json/3.json"]
 threadForCompletedTasks = None
 semaphore_comannd = threading.Semaphore(1)
 semaphore_process = threading.Semaphore(1)
-semaphore_delete = threading.Semaphore(1)
-semaphore_list = threading.Semaphore(1)
-semaphore_describe = threading.Semaphore(1)
-semaphore_exit = threading.Semaphore(1)
+
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -261,7 +258,7 @@ def delete(id_image):
                     print(image.imagePath)
                     os.remove(file_path)
 
-        print("Brisem sliku sa id-ijem:" + str(toDelete.id))
+        print("Deleted image with id:" + str(toDelete.id))
         del imageRegistry[indexForDelete]
         deleteProcessing = False
 
@@ -291,15 +288,13 @@ def taskCompleted():
                 break
         with condition:
             condition.notify_all()
-        print("Red za zavrsene taskove je prazan.")
+        print("Queue with tasks is empty.")
         pass
 
 def command_input():
     global threadList, eventQueue
 
-    threadForCompletedTasks = threading.Thread(target=taskCompleted)
-    threadForCompletedTasks.start()
-    threadList.append(threadForCompletedTasks)
+
 
     while True:
         with semaphore_comannd:
@@ -310,20 +305,20 @@ def command_input():
                 threadForAddImageC = threading.Thread(target=add_image, args=(image_path,))
                 threadForAddImageC.start()
                 threadList.append(threadForAddImageC)
-                print("Izvrsena add komanda.")
 
             elif command == "process":
                 threadForProcessC = threading.Thread(target=processTask)
                 threadForProcessC.start()
+                threadForCompletedTasks = threading.Thread(target=taskCompleted)
+                threadForCompletedTasks.start()
+                threadForCompletedTasks.join()
                 threadList.append(threadForProcessC)
-                print("Process komanda.")
 
             elif command == "delete":
                 id_image = input("Write your image id for delete: ")
                 threadForDeleteC = threading.Thread(target=delete, args=(id_image,))
                 threadForDeleteC.start()
                 threadList.append(threadForDeleteC)
-                print("Delete komanda")
 
             elif command == "list":
                 threadForListC = threading.Thread(target=list_command)
@@ -334,24 +329,22 @@ def command_input():
                 threadForDescribeC = threading.Thread(target=describe)
                 threadForDescribeC.start()
                 threadList.append(threadForDescribeC)
-                print("describe")
 
             elif command == "exit":
                 threadForExitC = threading.Thread(target=exit_delete)
                 threadForExitC.start()
                 threadForExitC.join()
-                print("Izlazak iz programa - exit")
                 os._exit(0)
 
             else:
-                print("Nepoznata komanda.")
+                print("Unknown command.")
 
             sleep(2)
             while not eventQueue.empty():
                 try:
                     value = eventQueue.get(timeout=5)
                     if value == "exit":
-                        print("Izlazak iz programa - exit")
+                        print("Exitting from program.")
                         sys.exit()
                     print(value)
                 except Empty:
@@ -361,5 +354,4 @@ def command_input():
 if __name__ == "__main__":
     threadMain = threading.Thread(target=command_input)
     threadMain.start()
-    #threadList.append(threadMain)
     threadMain.join()
