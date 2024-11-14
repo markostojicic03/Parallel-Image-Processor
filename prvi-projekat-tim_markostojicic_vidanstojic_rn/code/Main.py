@@ -26,6 +26,12 @@ filterProcessing = False
 deleteProcessing = False
 jsonFiles = ["../json/1.json", "../json/2.json", "../json/3.json"]
 threadForCompletedTasks = None
+semaphore_comannd = threading.Semaphore(1)
+semaphore_process = threading.Semaphore(1)
+semaphore_delete = threading.Semaphore(1)
+semaphore_list = threading.Semaphore(1)
+semaphore_describe = threading.Semaphore(1)
+semaphore_exit = threading.Semaphore(1)
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -259,6 +265,7 @@ def delete(id_image):
         del imageRegistry[indexForDelete]
         deleteProcessing = False
 
+
 def exit_delete():
     global imageRegistry
     eventQueue.put("exit")
@@ -277,71 +284,79 @@ def callbackFunction(taskId):
     print(f"Task {taskId} is finished!")
 
 def taskCompleted():
-    while True:
-        taskId = completedTasksQueue.get()
-        if(taskId == None):
-            break
-    with condition:
-        condition.notify_all()
-    print("Red za zavrsene taskove je prazan.")
+    with semaphore_process:
+        while True:
+            taskId = completedTasksQueue.get()
+            if(taskId == None):
+                break
+        with condition:
+            condition.notify_all()
+        print("Red za zavrsene taskove je prazan.")
+        pass
 
 def command_input():
-
-    global imageRegistry, taskRegistry, threadList,eventQueue, threadForCompletedTasks
+    global threadList, eventQueue
 
     threadForCompletedTasks = threading.Thread(target=taskCompleted)
     threadForCompletedTasks.start()
     threadList.append(threadForCompletedTasks)
 
-
     while True:
-        command = input("Write the command you want to do: ")
+        with semaphore_comannd:
+            command = input("Write the command you want to do: ")
 
-        if command == "add":
-            image_path = input("Write your image path(for example  ../imageResources/slika1.jpg): ")
-            threadForAddImageC = threading.Thread(target=add_image, args=(image_path,))
-            threadForAddImageC.start()
-            threadList.append(threadForAddImageC)
-            print("Izvrsena add komanda.")
-        elif command == "process":
-            threadForProcessC = threading.Thread(target=processTask)
-            threadForProcessC.start()
-            threadList.append(threadForProcessC)
-            print("Process komanda.")
-        elif command == "delete":
-            id_image = input("Write your image id for delete: ")
-            threadForDeleteC = threading.Thread(target=delete, args =(id_image,))
-            threadForDeleteC.start()
-            threadList.append(threadForDeleteC)
-            print("Delete komanda")
-        elif command == "list":
-            threadForListC = threading.Thread(target=list_command)
-            threadForListC.start()
-            threadList.append(threadForListC)
-        elif command == "describe":
-            threadForDescribeC = threading.Thread(target=describe)
-            threadForDescribeC.start()
-            threadList.append(threadForDescribeC)
-            print("describe")
-        elif command == "exit":
-            threadForExitC = threading.Thread(target=exit_delete)
-            threadForExitC.start()
-            #threadList.append(threadForExitC)
-            threadForExitC.join()
-            print("Izlazak iz programa - exit")
-            os._exit(0)
-        else:
-            print("Nepoznata komanda.")
-        sleep(2)
-        while not eventQueue.empty():
-            try:
-                value = eventQueue.get(timeout=5)
-                if (value == "exit"):
-                    print("Izlazak iz programa - exit")
-                    sys.exit()
-                print(value)
-            except Empty:
-                pass
+            if command == "add":
+                image_path = input("Write your image path(for example ../imageResources/slika1.jpg): ")
+                threadForAddImageC = threading.Thread(target=add_image, args=(image_path,))
+                threadForAddImageC.start()
+                threadList.append(threadForAddImageC)
+                print("Izvrsena add komanda.")
+
+            elif command == "process":
+                threadForProcessC = threading.Thread(target=processTask)
+                threadForProcessC.start()
+                threadList.append(threadForProcessC)
+                print("Process komanda.")
+
+            elif command == "delete":
+                id_image = input("Write your image id for delete: ")
+                threadForDeleteC = threading.Thread(target=delete, args=(id_image,))
+                threadForDeleteC.start()
+                threadList.append(threadForDeleteC)
+                print("Delete komanda")
+
+            elif command == "list":
+                threadForListC = threading.Thread(target=list_command)
+                threadForListC.start()
+                threadList.append(threadForListC)
+
+            elif command == "describe":
+                threadForDescribeC = threading.Thread(target=describe)
+                threadForDescribeC.start()
+                threadList.append(threadForDescribeC)
+                print("describe")
+
+            elif command == "exit":
+                threadForExitC = threading.Thread(target=exit_delete)
+                threadForExitC.start()
+                threadForExitC.join()
+                print("Izlazak iz programa - exit")
+                os._exit(0)
+
+            else:
+                print("Nepoznata komanda.")
+
+            sleep(2)
+            while not eventQueue.empty():
+                try:
+                    value = eventQueue.get(timeout=5)
+                    if value == "exit":
+                        print("Izlazak iz programa - exit")
+                        sys.exit()
+                    print(value)
+                except Empty:
+                    pass
+        pass
 
 if __name__ == "__main__":
     threadMain = threading.Thread(target=command_input)
