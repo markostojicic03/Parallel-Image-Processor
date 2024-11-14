@@ -25,6 +25,7 @@ completedTasksQueue = Queue(0)
 filterProcessing = False
 deleteProcessing = False
 jsonFiles = ["../json/1.json", "../json/2.json", "../json/3.json"]
+threadForCompletedTasks = None
 
 def grayscale(image_array):
     red_channel = image_array[..., 0]
@@ -107,10 +108,9 @@ class Task:
 cnt_taskID = 1
 cnt_imageID = 1
 cnt_json = 1
-def add_image():
+def add_image(image_path):
     global cnt_imageID
     global imageRegistry
-    image_path = input("Write your image path(for example  ../imageResources/slika1.jpg): ")
 
     target_dir = "../slike"
     os.makedirs(target_dir, exist_ok=True)
@@ -232,9 +232,8 @@ def describe():
                 imageValue += str1 + " "
             eventQueue.put(imageValue)
 
-def delete():
+def delete(id_image):
     global imageRegistry, filterProcessing, condition, deleteProcessing
-    id_image = input("Write your image id for delete: ")
     with condition:
         while filterProcessing:
             print("Waiting filter")
@@ -268,7 +267,7 @@ def exit_delete():
         print(file_path)
         os.remove(file_path)
     for threadElement in threadList:
-        if threadElement != threading.current_thread():
+        if (threadElement != threading.current_thread() ) & (threadElement != threadForCompletedTasks):
             threadElement.join()
         else:
             print(threadElement.name)
@@ -288,47 +287,49 @@ def taskCompleted():
 
 def command_input():
 
-    global imageRegistry, taskRegistry, threadList,eventQueue
+    global imageRegistry, taskRegistry, threadList,eventQueue, threadForCompletedTasks
 
-    taskCompletedThread = threading.Thread(target=taskCompleted)
-    taskCompletedThread.start()
-    threadList.append(taskCompletedThread)
+    threadForCompletedTasks = threading.Thread(target=taskCompleted)
+    threadForCompletedTasks.start()
+    threadList.append(threadForCompletedTasks)
 
 
     while True:
         command = input("Write the command you want to do: ")
 
         if command == "add":
-            threadForAddImageC = threading.Thread(target=add_image())
+            image_path = input("Write your image path(for example  ../imageResources/slika1.jpg): ")
+            threadForAddImageC = threading.Thread(target=add_image, args=(image_path,))
             threadForAddImageC.start()
             threadList.append(threadForAddImageC)
             print("Izvrsena add komanda.")
         elif command == "process":
-            threadForProcessC = threading.Thread(target=processTask())
+            threadForProcessC = threading.Thread(target=processTask)
             threadForProcessC.start()
             threadList.append(threadForProcessC)
             print("Process komanda.")
         elif command == "delete":
-            threadForDeleteC = threading.Thread(target=delete())
+            id_image = input("Write your image id for delete: ")
+            threadForDeleteC = threading.Thread(target=delete, args =(id_image,))
             threadForDeleteC.start()
             threadList.append(threadForDeleteC)
             print("Delete komanda")
         elif command == "list":
-            threadForListC = threading.Thread(target=list_command())
+            threadForListC = threading.Thread(target=list_command)
             threadForListC.start()
             threadList.append(threadForListC)
         elif command == "describe":
-            threadForDescribeC = threading.Thread(target=describe())
+            threadForDescribeC = threading.Thread(target=describe)
             threadForDescribeC.start()
             threadList.append(threadForDescribeC)
             print("describe")
         elif command == "exit":
-            threadForExitC = threading.Thread(target=exit_delete())
+            threadForExitC = threading.Thread(target=exit_delete)
             threadForExitC.start()
-            threadList.append(threadForExitC)
+            #threadList.append(threadForExitC)
             threadForExitC.join()
             print("Izlazak iz programa - exit")
-            sys.exit()
+            os._exit(0)
         else:
             print("Nepoznata komanda.")
         sleep(2)
@@ -345,7 +346,5 @@ def command_input():
 if __name__ == "__main__":
     threadMain = threading.Thread(target=command_input)
     threadMain.start()
-    threadList.append(threadMain)
+    #threadList.append(threadMain)
     threadMain.join()
-#C:\Users\vidan_gofx79m\Desktop\slika.jpg
-#C:\Users\Marko\Desktop\slika.jpg
