@@ -1,48 +1,37 @@
-# VisionParallel: Image Processing Parallel System
+# Parallel Image Processing System
 
 ## Project Overview
-VisionParallel is an advanced system developed for the Parallel Algorithms course, designed for the efficient and concurrent processing of large image datasets. The system allows for the application of various visual filters and transformations while maintaining precise records of processing status and data integrity. The architecture leverages Python’s multi-threading and multi-processing ecosystems to achieve maximum throughput and scalability.
+This project involves the development of a system designed for the parallel processing of large sets of images. The system applies various filters and transformations, saves the processed versions, and maintains a record of the processing status. It is implemented in a single Python file and utilizes both multi-threading and multi-processing to handle concurrent commands and image manipulations.
 
 ---
 
-## System Architecture and Components
-The system is divided into several key components that enable asynchronous operation and secure resource manipulation:
+## System Components
+The architecture consists of several interconnected modules:
 
-1. Image Registry: A central ledger that tracks original and processed images, their unique identifiers, task associations, and metadata such as processing time and file sizes.
-2. Task Registry: A module for managing the task lifecycle, tracking transformations and current status (waiting, in progress, completed). It utilizes synchronization primitives to notify the system upon task completion.
-3. Main Management Thread: The central controller that initializes the system, receives user commands, and distributes them to the appropriate execution threads.
-4. Command Processing Threads: Dedicated threads responsible for executing user operations such as adding, deleting, and listing information, allowing multiple management commands to run simultaneously.
-5. Image Processing Processes: An execution layer that utilizes a Process Pool (multiprocessing.Pool) to apply actual transformations, bypassing global interpreter lock (GIL) limitations to achieve true parallelism.
-
----
-
-## Functional Capabilities
-The system supports a variety of operations for managing and processing visual data:
-
-- Dynamic Image Management: Securely copying images into the system and controlled deletion with task dependency verification.
-- Task-Based Processing: Defining transformation parameters via JSON files and tracking dependencies between different tasks.
-- Feedback Mechanism: A mechanism based on Queues and callback functions that ensures tasks are marked as finished in real-time.
-- Output Management: Viewing available images and reconstructing the detailed history of how each image was generated through the identifier system.
+1. Image Registry: Maintains a list of original and processed images, unique identifiers, task IDs, and metadata such as applied filters, processing time, and file sizes.
+2. Task Registry: Stores tasks for processing, including image IDs, transformation types, and current status (waiting, in progress, or completed). It uses condition variables to notify the system when a task is finished.
+3. Main Reception Thread: The primary thread that initializes all registries, threads, and processes. It continuously listens for input commands and delegates them to handler threads.
+4. Command Processing Threads: Individual threads that process user commands (add, process, delete, list, describe, exit) concurrently.
+5. Image Processing Processes: Utilizes a multiprocessing pool to execute image transformations independently, ensuring efficient parallel execution.
+6. Completion Queue and Thread: A mechanism where completed task IDs are placed in a queue, and a dedicated thread marks them as finished and triggers necessary notifications.
 
 ---
 
 ## Supported Transformations
-The system implements mathematically precise algorithms for image modification:
+The system implements the following image processing techniques:
 
-- Grayscale: Converting color images to grayscale using a weighted sum of RGB channels (0.299R + 0.587G + 0.114B).
-- Gaussian Blur: Applying a Gaussian filter and convolution matrix to soften transitions within the image.
-- Brightness Adjustment: Scaling pixel values to achieve desired lighting or contrast levels while protecting against value overflow.
-
----
-
-## Technical Setup and Execution
-The project is implemented in Python using standard libraries for parallel programming.
-
-1. Clone the repository to your local machine.
-2. Ensure the required images and JSON configuration files are present in the root directory.
-3. Launch the main script using the following command:
-   python main.py
-4. The system will wait for command input via the standard input (add, process, list, delete, describe, exit).
+* Grayscale: Conversion of color images to gray tones using a weighted sum of RGB channels (0.299*R + 0.587*G + 0.114*B).
+* Gaussian Blur: A blurring technique achieved by applying a Gaussian filter kernel to pixels to soften sharp transitions.
+* Brightness Adjustment: Modifying image brightness by scaling pixel values by a constant factor while preventing value overflow.
 
 ---
-Project developed as part of the Parallel Algorithms course curriculum.
+
+## Technical Requirements and Execution
+The project is submitted via GitHub Classroom. To run the system:
+
+1. Clone the repository and ensure at least one sample image and JSON file are present.
+2. Run the Python script.
+3. Use the command-line interface to issue commands such as add to import images, process to apply filters via JSON parameters, and exit to safely stop all active components.
+
+---
+Developed for the Parallel Algorithms course.
